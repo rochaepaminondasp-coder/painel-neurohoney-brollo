@@ -140,6 +140,20 @@ async function ratoeiraTaboolaDay(mcp, date) {
   };
 }
 
+// initiate checkouts registrados pela Ratoeira (total e por rede: 4 = Taboola, 6 = MGID)
+async function ratoeiraCheckouts(mcp, date) {
+  const count = async (extra) => {
+    const t = await withRetry(() => mcp.call('get_checkout_vendas_by_cliente', { data_inicio: date, data_fim: date, limit: 1, page: 1, format: 'json', timezone: TZ, ...extra }), 4);
+    const all = [...t.matchAll(/"total"\s*:\s*(\d+)/g)];
+    if (!all.length) { if (/nenhum|não foi|sem /i.test(t)) return 0; throw new Error('checkouts: resposta sem total — ' + t.replace(/\s+/g, ' ').slice(0, 120)); }
+    return +all.at(-1)[1]; // o "total" da lista vem depois dos itens
+  };
+  const ic = await count({});
+  const ic_tab = ic ? await count({ rede_ads_id: 4 }) : 0;
+  const ic_mgid = ic ? await count({ rede_ads_id: 6 }) : 0;
+  return { ic, ic_tab, ic_mgid };
+}
+
 // ---------- Taboola Backstage API ----------
 let taboolaToken;
 async function taboolaAuth() {
@@ -282,7 +296,7 @@ function mockData() {
     return { date, fx, revenue_usd: rev, revenue_brl: rev * fx, gross_usd: rev, sales, sales_front: Math.round(sales * 0.68), upsells: Math.round(sales * 0.32), upsell_usd: rev * 0.45, refunds_usd: Math.random() * 60, refunds: Math.round(Math.random() * 2), untracked: Math.round(Math.random() * 3),
       tab_spend_brl: tab, tab_spend_usd: tab / fx, tab_rev_usd: tabRev, tab_sales: Math.round(tabRev / 55), tab_clicks: Math.round(tab * 4), tab_imps: Math.round(tab * 2000), tab_checkouts: Math.round(tab / 10), tab_pageviews: Math.round(tab * 7),
       mgid_spend: mg, mgid_clicks: Math.round(mg * 12), mgid_imps: Math.round(mg * 5000), mgid_conv: Math.round(mg / 40),
-      countries, tab_ctry, hours, mgid_ctry: Object.fromEntries(Object.entries(CC).map(([c, w]) => [c, [r2(mg * w), Math.round(mg * 12 * w), Math.round(mg * 5000 * w), Math.round(mg / 40 * w)]])),
+      ic: Math.round(sales * 7.5), ic_tab: Math.round(tabRev / 55 * 7), ic_mgid: Math.round(sales * 7.5 - tabRev / 55 * 7), countries, tab_ctry, hours, mgid_ctry: Object.fromEntries(Object.entries(CC).map(([c, w]) => [c, [r2(mg * w), Math.round(mg * 12 * w), Math.round(mg * 5000 * w), Math.round(mg / 40 * w)]])),
       tab_camps: camps.map((c) => ({ id: c.id, name: c.name, spend: r2(tab * c.w / wsum), clicks: Math.round(tab * 4 * c.w / wsum), imps: Math.round(tab * 2000 * c.w / wsum), conv: Math.round(30 * c.w / wsum), cval: 0 })),
       mgid_camps: mcamps.map((c) => ({ id: c.id, name: c.name, spend: r2(mg * c.w / msum), clicks: Math.round(mg * 12 * c.w / msum), imps: Math.round(mg * 5000 * c.w / msum), conv: Math.round(mg / 40 * c.w / msum) })) };
   });
@@ -302,7 +316,7 @@ async function main() {
     if (START_DATE) console.log(`Início da operação: ${START_DATE}`);
     const refresh = new Set(window.slice(-REFRESH_DAYS));
     const need = (d, k) => refresh.has(d) || !prevByDate[d] || !prevByDate[d][k];
-    const KEYS = [hasR && 'ok_r2', hasR && 'ok_rt2', hasT && 'ok_tc', hasT && 'ok_tg', hasM && 'ok_m2'].filter(Boolean);
+    const KEYS = [hasR && 'ok_r2', hasR && 'ok_rt2', hasR && 'ok_ic', hasT && 'ok_tc', hasT && 'ok_tg', hasM && 'ok_m2'].filter(Boolean);
     const todo = window.filter((d) => KEYS.some((k) => need(d, k)));
     console.log(`Histórico anterior: ${prev ? Object.keys(prevByDate).length + ' dias' : 'nenhum'}. Atualizando ${todo.length} dia(s).`);
 
@@ -341,6 +355,9 @@ async function main() {
       }
       if (!stopped && mcp && need(date, 'ok_rt2')) {
         try { Object.assign(d, await ratoeiraTaboolaDay(mcp, date)); d.ok_rt = d.ok_rt2 = true; } catch (e) { d.ok_rt2 = false; if (rErr++ < 5) logErr(`ratoeira-taboola ${date}`, e.message); }
+      }
+      if (!stopped && mcp && need(date, 'ok_ic')) {
+        try { Object.assign(d, await ratoeiraCheckouts(mcp, date)); d.ok_ic = true; } catch (e) { d.ok_ic = false; if (rErr++ < 5) logErr(`ratoeira-checkouts ${date}`, e.message); }
       }
       const td = tabDaily[date];
       if (td) {

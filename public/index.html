@@ -172,6 +172,7 @@ footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
   <section data-panel="visao-geral">
     <div class="grid k4 mb" id="kpis"></div>
     <div class="grid k4 mb" id="kpis2"></div>
+    <div class="grid k4 mb" id="kpis3"></div>
     <div class="grid c32 mb">
       <div class="card">
         <h3 id="c-main-title">Faturamento × gasto</h3>
@@ -264,6 +265,7 @@ footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
         <li><b>Gasto Taboola</b>: Ratoeira/API Taboola. <b>Gasto MGID</b>: API MGID.</li>
         <li><b>Receita Taboola</b>: vendas que a Ratoeira atribuiu ao Taboola. <b>Receita MGID</b>: faturamento total − receita Taboola.</li>
         <li><b>Lucro</b> = faturamento − gasto em anúncios (sem taxas, impostos e custo de produto). <b>ROAS</b> = faturamento ÷ gasto. <b>CPA</b> = gasto ÷ vendas front.</li>
+        <li><b>Initiate checkouts</b>: registrados pela Tag da Ratoeira (total e por rede). <b>Conversão do checkout</b> = vendas front ÷ checkouts. <b>Checkout por clique</b> = checkouts ÷ cliques nos anúncios.</li>
         <li><b>Câmbio</b>: o do dia, calculado a partir dos valores em R$ e US$ da Ratoeira.</li>
         <li>Com um <b>país</b> selecionado: faturamento daquele país (todas as fontes) e gasto das plataformas naquele país.</li>
         <li>Atualização automática a cada 30 minutos. A página recarrega os dados sozinha a cada 10 minutos.</li>
@@ -388,6 +390,17 @@ function vals(d) {
   } else if (state.plat === 'taboola') { v.rev = tabRev; v.spend = tab; v.sales = v.tabSales; v.front = v.tabSales; v.ups = NaN; }
   else if (state.plat === 'mgid') { v.rev = mgRev; v.spend = mg; v.sales = v.mgSales; v.front = v.mgSales; v.ups = NaN; }
   else { v.rev = revAll; v.spend = tab + mg; v.sales = d.sales || 0; }
+  // initiate checkouts (Ratoeira) e cliques, conforme os filtros
+  const n = (x) => (x == null ? NaN : x);
+  v.icTab = n(d.ic_tab ?? d.tab_checkouts); v.icMg = n(d.ic_mgid);
+  if (c !== 'all') {
+    v.ic = NaN;
+    const tc = d.tab_ctry?.[c] || [0, 0], mc = d.mgid_ctry?.[c] || [0, 0];
+    v.clicks = state.plat === 'mgid' ? mc[1] : state.plat === 'taboola' ? tc[1] : tc[1] + mc[1];
+  } else {
+    v.ic = state.plat === 'taboola' ? v.icTab : state.plat === 'mgid' ? v.icMg : n(d.ic);
+    v.clicks = state.plat === 'mgid' ? v.mgClicks : state.plat === 'taboola' ? v.tabClicks : v.tabClicks + v.mgClicks;
+  }
   v.profit = v.rev - v.spend;
   return v;
 }
@@ -425,7 +438,7 @@ function render() {
 const kpi = (label, value, note, cls = '', small = false) => `<div class="card kpi${small ? ' small' : ''}"><div class="label">${label}</div><div class="value ${cls}">${value}</div><div class="note">${note}</div></div>`;
 
 function totals(rows) {
-  const T = {}; for (const k of ['rev', 'spend', 'profit', 'sales', 'front', 'ups', 'tab', 'mg', 'tabRev', 'mgRev', 'revAll', 'refunds', 'upsRev', 'tabC']) T[k] = sumN(rows, k);
+  const T = {}; for (const k of ['rev', 'spend', 'profit', 'sales', 'front', 'ups', 'tab', 'mg', 'tabRev', 'mgRev', 'revAll', 'refunds', 'upsRev', 'tabC', 'ic', 'icTab', 'icMg', 'clicks']) T[k] = sumN(rows, k);
   return T;
 }
 
@@ -439,7 +452,8 @@ function drawOverview(rows, r) {
   const prevLabel = state.period === 'today' ? 'ontem' : state.period === 'yesterday' ? 'anteontem' : 'antes';
   const m = (X) => {
     const front = isFinite(X.front) ? X.front : X.sales;
-    return { profit: X.profit, rev: X.rev, spend: X.spend, roas: div(X.rev, X.spend), front, cpa: div(X.spend, front), ticket: div(X.rev, front), upr: isFinite(X.ups) ? div(X.ups, X.front) * 100 : NaN };
+    return { profit: X.profit, rev: X.rev, spend: X.spend, roas: div(X.rev, X.spend), front, cpa: div(X.spend, front), ticket: div(X.rev, front), upr: isFinite(X.ups) ? div(X.ups, X.front) * 100 : NaN,
+      ic: X.ic, ckr: div(front, X.ic) * 100, cpi: div(X.spend, X.ic), icr: div(X.ic, X.clicks) * 100 };
   };
   const cur = m(T), prv = m(P);
   const ICONS = {
@@ -451,8 +465,12 @@ function drawOverview(rows, r) {
     cpa: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
     ticket: '<path d="M3 12V4h8l10 10-8 8L3 12z"/><circle cx="7.5" cy="8" r="1.5"/>',
     upr: '<path d="M12 19V5M5 12l7-7 7 7"/><path d="M5 21h14"/>',
+    ic: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/>',
+    ckr: '<path d="M4 5h16l-6 7v6l-4 2v-8L4 5z"/>',
+    cpi: '<circle cx="12" cy="12" r="9"/><path d="M14.5 9.5c-.5-1-1.5-1.5-2.5-1.5-1.4 0-2.5.8-2.5 2s1.1 1.7 2.5 2 2.5.8 2.5 2-1.1 2-2.5 2c-1 0-2-.5-2.5-1.5M12 6.5V8M12 16v1.5"/>',
+    icr: '<path d="M9 4v8l-2.5-1.5L5 12l5 7h7l2-7-6-1.5V4a2 2 0 0 0-4 0z"/>',
   };
-  const TINT = { profit: '--good-fill', rev: '--seq', spend: '--warn', roas: '--good-fill', front: '--seq', cpa: '--warn', ticket: '--seq', upr: '--good-fill' };
+  const TINT = { profit: '--good-fill', rev: '--seq', spend: '--warn', roas: '--good-fill', front: '--seq', cpa: '--warn', ticket: '--seq', upr: '--good-fill', ic: '--seq', ckr: '--good-fill', cpi: '--warn', icr: '--seq' };
   const card = (key, label, fmt, opts = {}) => {
     const v = cur[key], pv = prv[key];
     const pills = [];
@@ -480,6 +498,12 @@ function drawOverview(rows, r) {
     card('cpa', 'CPA (custo por venda)', money, { lowerIsBetter: true }) +
     card('ticket', 'Ticket médio (c/ upsell)', money, {}) +
     card('upr', 'Conversão de upsell', (v) => fmtPct(v), { points: true, extra: isFinite(T.ups) ? `${fmtInt(T.ups)} upsells` : 'só no total geral' });
+  const noIc = !isFinite(T.ic) ? (state.country !== 'all' ? 'sem dado por país' : 'disponível após a próxima atualização') : '';
+  $('kpis3').innerHTML =
+    card('ic', 'Initiate checkouts', fmtInt, { showPrev: true, extra: noIc }) +
+    card('ckr', 'Conversão do checkout', (v) => fmtPct(v), { points: true, extra: noIc || 'vendas front ÷ checkouts' }) +
+    card('cpi', 'Custo por checkout', money, { lowerIsBetter: true, extra: noIc }) +
+    card('icr', 'Checkout por clique', (v) => fmtPct(v, 2), { points: true, extra: noIc || `${fmtInt(T.clicks)} cliques` });
 
   // gráfico principal: por hora quando é um dia só e temos dados por hora
   const single = r[0] === r[1], day = single ? state.data.days.find((d) => d.date === r[0]) : null;
@@ -553,9 +577,9 @@ function drawPlatforms(rows, r) {
   $('net-taboola').innerHTML = net('Taboola', '--s1', T.tab, T.tabRev, ts, tc, ti, `<div><dt>Vendas · CPA</dt><dd>${fmtInt(ts)} · ${dash(div(T.tab, ts), fmtMoneyS)}</dd></div>`);
   $('net-mgid').innerHTML = net('MGID', '--s2', T.mg, T.mgRev, ms, mc, mi, `<div><dt>Conversões (MGID)</dt><dd>${fmtInt(mconv)}</dd></div>`);
   const spendAll = T.tab + T.mg;
-  const row = (name, color, spend, rev, sales, clicks, imps, bold) => `<tr${bold ? ' style="font-weight:650"' : ''}><td class="l"><span class="tag">${color ? `<i class="dot" style="background:var(${color})"></i>` : ''}${name}</span></td><td>${fmtMoneyS(spend)}</td><td>${fmtPct(div(spend, spendAll) * 100, 0)}</td><td>${fmtMoneyS(rev)}</td><td>${fmtX(div(rev, spend))}</td><td class="${rev - spend >= 0 ? 'pos' : 'neg'}">${fmtMoneyS(rev - spend)}</td><td>${fmtInt(sales)}</td><td>${dash(div(spend, sales), fmtMoneyS)}</td><td>${fmtInt(clicks)}</td><td>${dash(div(spend, clicks), fmtMoney)}</td><td>${fmtPct(div(clicks, imps) * 100, 2)}</td></tr>`;
-  $('t-plat').innerHTML = `<thead><tr><th>Plataforma</th><th>Gasto</th><th>% gasto</th><th>Receita</th><th>ROAS</th><th>Lucro</th><th>Vendas</th><th>CPA</th><th>Cliques</th><th>CPC</th><th>CTR</th></tr></thead><tbody>
-    ${row('Taboola', '--s1', T.tab, T.tabRev, ts, tc, ti)}${row('MGID', '--s2', T.mg, T.mgRev, ms, mc, mi)}</tbody><tfoot>${row('Total', '', spendAll, T.revAll, ts + ms, tc + mc, ti + mi, true)}</tfoot>`;
+  const row = (name, color, spend, rev, sales, clicks, imps, ic, bold) => `<tr${bold ? ' style="font-weight:650"' : ''}><td class="l"><span class="tag">${color ? `<i class="dot" style="background:var(${color})"></i>` : ''}${name}</span></td><td>${fmtMoneyS(spend)}</td><td>${fmtPct(div(spend, spendAll) * 100, 0)}</td><td>${fmtMoneyS(rev)}</td><td>${fmtX(div(rev, spend))}</td><td class="${rev - spend >= 0 ? 'pos' : 'neg'}">${fmtMoneyS(rev - spend)}</td><td>${fmtInt(sales)}</td><td>${dash(div(spend, sales), fmtMoneyS)}</td><td>${isFinite(ic) ? fmtInt(ic) : '—'}</td><td>${fmtPct(div(sales, ic) * 100)}</td><td>${dash(div(spend, ic), fmtMoneyS)}</td><td>${fmtInt(clicks)}</td><td>${dash(div(spend, clicks), fmtMoney)}</td><td>${fmtPct(div(clicks, imps) * 100, 2)}</td></tr>`;
+  $('t-plat').innerHTML = `<thead><tr><th>Plataforma</th><th>Gasto</th><th>% gasto</th><th>Receita</th><th>ROAS</th><th>Lucro</th><th>Vendas</th><th>CPA</th><th>Checkouts</th><th>Conv. checkout</th><th>Custo/checkout</th><th>Cliques</th><th>CPC</th><th>CTR</th></tr></thead><tbody>
+    ${row('Taboola', '--s1', T.tab, T.tabRev, ts, tc, ti, T.icTab)}${row('MGID', '--s2', T.mg, T.mgRev, ms, mc, mi, T.icMg)}</tbody><tfoot>${row('Total', '', spendAll, T.revAll, ts + ms, tc + mc, ti + mi, sumN(rows.map((v) => ({ x: v.icTab + v.icMg })), 'x'), true)}</tfoot>`;
   const ctx = contextRows(r);
   const o = baseOpts(); o.scales.x.stacked = true; o.scales.y.stacked = true;
   chart('plat', 'c-plat', { type: 'bar', data: { labels: ctx.map((v) => shortDate(v.date)), datasets: [
@@ -638,9 +662,9 @@ function drawHistory(rows) {
   const list = rows.slice().reverse();
   $('hist-note').textContent = `${list.length} dia${list.length === 1 ? '' : 's'} no período · ⚠ = alguma fonte falhou nesse dia`;
   const T = totals(rows);
-  const tr = (v, label) => `<tr><td>${label}</td><td>${fmtMoneyS(v.rev)}</td><td>${dash(v.spend, fmtMoneyS)}</td><td>${fmtMoneyS(v.tab)}</td><td>${fmtMoneyS(v.mg)}</td><td class="${v.profit >= 0 ? 'pos' : 'neg'}">${dash(v.profit, fmtMoneyS)}</td><td>${fmtX(div(v.rev, v.spend))}</td><td>${fmtInt(v.sales)}</td><td>${isFinite(v.front) ? fmtInt(v.front) : '—'}</td><td>${isFinite(v.ups) ? fmtInt(v.ups) : '—'}</td><td>${dash(div(v.spend, isFinite(v.front) ? v.front : v.sales), fmtMoneyS)}</td><td class="note">${v.fx ? v.fx.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}</td></tr>`;
+  const tr = (v, label) => `<tr><td>${label}</td><td>${fmtMoneyS(v.rev)}</td><td>${dash(v.spend, fmtMoneyS)}</td><td>${fmtMoneyS(v.tab)}</td><td>${fmtMoneyS(v.mg)}</td><td class="${v.profit >= 0 ? 'pos' : 'neg'}">${dash(v.profit, fmtMoneyS)}</td><td>${fmtX(div(v.rev, v.spend))}</td><td>${fmtInt(v.sales)}</td><td>${isFinite(v.front) ? fmtInt(v.front) : '—'}</td><td>${isFinite(v.ups) ? fmtInt(v.ups) : '—'}</td><td>${isFinite(v.ic) ? fmtInt(v.ic) : '—'}</td><td>${fmtPct(div(isFinite(v.front) ? v.front : v.sales, v.ic) * 100)}</td><td>${dash(div(v.spend, isFinite(v.front) ? v.front : v.sales), fmtMoneyS)}</td><td class="note">${v.fx ? v.fx.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}</td></tr>`;
   $('t-days').innerHTML = !list.length ? `<tbody><tr><td class="empty">Sem dados nesse período.</td></tr></tbody>` :
-    `<thead><tr><th>Dia</th><th>Faturamento</th><th>Gasto</th><th>Taboola</th><th>MGID</th><th>Lucro</th><th>ROAS</th><th>Vendas</th><th>Front</th><th>Upsell</th><th>CPA</th><th>Câmbio</th></tr></thead>
+    `<thead><tr><th>Dia</th><th>Faturamento</th><th>Gasto</th><th>Taboola</th><th>MGID</th><th>Lucro</th><th>ROAS</th><th>Vendas</th><th>Front</th><th>Upsell</th><th>Checkouts</th><th>Conv. checkout</th><th>CPA</th><th>Câmbio</th></tr></thead>
     <tbody>${list.map((v) => tr(v, `${shortDate(v.date)}/${v.date.slice(2, 4)}${v.partial ? ' <span title="Alguma fonte falhou neste dia">⚠</span>' : ''}`)).join('')}</tbody>
     <tfoot>${tr({ ...T, fx: 0 }, 'Total')}</tfoot>`;
 }
