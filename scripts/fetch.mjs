@@ -167,9 +167,12 @@ async function mgidLogin() {
     const res = await fetchT('https://api.mgid.com/v1/auth/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' }, body: new URLSearchParams({ email: env.MGID_EMAIL.trim(), password: env.MGID_PASSWORD }) });
     const text = await res.text();
     if (!res.ok) { console.log(`[aviso] MGID login HTTP ${res.status} ${text.replace(/\s+/g, ' ').slice(0, 120)}`); return; }
-    const j = JSON.parse(text);
-    if (j.token) { MGID_TOKEN = j.token; console.log('MGID login OK (token novo gerado)'); }
-    const idAuth = String(j.idAuth ?? j.id_auth ?? j.clientId ?? '');
+    let j; try { j = JSON.parse(text); } catch { console.log(`[aviso] MGID login HTTP ${res.status}: resposta não-JSON (${text.length} chars)`); return; }
+    const src = j.data && typeof j.data === 'object' ? { ...j, ...j.data } : j;
+    const tok = src.token ?? src.accessToken ?? src.access_token ?? src.apiToken;
+    if (tok) { MGID_TOKEN = String(tok); console.log('MGID login OK (token novo gerado)'); }
+    else console.log(`[aviso] MGID login HTTP ${res.status} sem token. Estrutura: ${shape(j)}`);
+    const idAuth = String(src.idAuth ?? src.id_auth ?? src.clientId ?? src.client_id ?? src.userId ?? '');
     if (idAuth) { console.log(`MGID_CLIENT_ID confere com a conta do login: ${idAuth === MGID_CLIENT ? 'sim' : 'não — usando o da conta'}`); MGID_CLIENT = idAuth; }
   } catch (e) { console.log('[aviso] MGID login:', e.message); }
 }
