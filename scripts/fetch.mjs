@@ -6,7 +6,8 @@ import { mkdir, writeFile, cp } from 'node:fs/promises';
 const env = process.env;
 const MOCK = process.argv.includes('--mock');
 const TZ = 'America/Sao_Paulo';
-const HISTORY_DAYS = Number(env.HISTORY_DAYS || 30);
+const HISTORY_DAYS = Number(env.HISTORY_DAYS || 90);
+const DEADLINE = Date.now() + Number(env.MAX_MINUTES || 40) * 60000; // para antes do timeout; o resto fica para a próxima execução
 const REFRESH_DAYS = Number(env.REFRESH_DAYS || 3); // últimos N dias sempre recalculados
 const MGID_CURRENCY = (env.MGID_CURRENCY || 'USD').toUpperCase();
 const PAGES_URL = env.PAGES_URL || 'https://rochaepaminondasp-coder.github.io/painel-neurohoney-brollo/';
@@ -27,7 +28,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function withRetry(fn, tries = 2) {
   let last;
   for (let i = 0; i < tries; i++) {
-    try { return await fn(); } catch (e) { last = e; await sleep(2000 * (i + 1)); }
+    try { return await fn(); } catch (e) {
+      last = e;
+      const busy = /too many|429|tempo limite|timeout|abort/i.test(e.message);
+      if (i < tries - 1) await sleep(busy ? [5000, 15000, 30000][i] || 30000 : 2000 * (i + 1));
+    }
   }
   throw last;
 }
@@ -40,7 +45,7 @@ async function fetchT(url, opts = {}, ms = 120000) {
 
 // ---------- Ratoeira (cliente MCP mínimo, Streamable HTTP) ----------
 class Mcp {
-  constructor(url) { this.url = url; this.sid = null; this.id = 0; }
+  constructor(url) { this.url = url; this.sid = null; this.id = 0; this.last = 0; }
   async rpc(method, params, isNotification = false) {
     const body = { jsonrpc: '2.0', method, params };
     if (!isNotification) body.id = ++this.id;
@@ -50,7 +55,7 @@ class Mcp {
     const sid = res.headers.get('mcp-session-id');
     if (sid) this.sid = sid;
     if (isNotification) return null;
-    if (!res.ok) throw new Error(`MCP HTTP ${res.status}`);
+    if (!res.ok) throw new Error(res.status === 429 ? 'Too Many Requests' : `MCP HTTP ${res.status}`);
     const text = await res.text();
     let msg;
     if ((res.headers.get('content-type') || '').includes('text/event-stream')) {
@@ -71,6 +76,8 @@ class Mcp {
   }
   toolName(base) { return this.tools.find((n) => n === base || n.endsWith(base)) || base; }
   async call(base, args) {
+    const wait = this.last + 1500 - Date.now(); if (wait > 0) await sleep(wait); // espaça chamadas (limite de requisições)
+    this.last = Date.now();
     const r = await this.rpc('tools/call', { name: this.toolName(base), arguments: args });
     const text = (r.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('\n');
     if (r.isError) throw new Error(text.slice(0, 200));
@@ -82,10 +89,19 @@ class Mcp {
 const pick = (text, key) => { const m = text.match(new RegExp(`"${key}"\\s*:\\s*(-?[0-9.eE+-]+)`)); return m ? +m[1] : 0; };
 
 async function ratoeiraDay(mcp, date) {
-  const args = { periodoAtual: { dataInicio: date, dataFim: date }, format: 'json' };
+  const args = { periodoAtual: { dataInicio: date, dataFim: date }, format: 'json', incluirGraficos: true };
   if (env.RATOEIRA_PROJETO_ID) args.projeto = [Number(env.RATOEIRA_PROJETO_ID)];
-  const t = await withRetry(() => mcp.call('get_financial_dashboard', args));
+  const t = await withRetry(() => mcp.call('get_financial_dashboard', args), 4);
+  // vendas por país: {"siglaPais":"MX", ... "quantidadeVenda":21, ... "totalVendaDolar":765 ...}
+  const countries = {};
+  for (const m of t.matchAll(/"siglaPais"\s*:\s*"([^"]*)"[^}]*?"quantidadeVenda"\s*:\s*([0-9.]+)[^}]*?"totalVendaDolar"\s*:\s*(-?[0-9.]+)/g)) {
+    const cc = (m[1] || '??').toUpperCase(); const c = (countries[cc] ||= [0, 0]); c[0] += +m[2]; c[1] += +m[3];
+  }
+  // faturamento e investimento por hora (USD)
+  const hours = [];
+  for (const m of t.matchAll(/"hora"\s*:\s*"(\d+)"[^}]*?"faturamentoDolar"\s*:\s*(-?[0-9.]+)[^}]*?"investimentoDolar"\s*:\s*(-?[0-9.]+)/g)) hours[+m[1]] = [+m[2], +m[3]];
   return {
+    countries, hours: hours.length ? Array.from({ length: 24 }, (_, i) => hours[i] || [0, 0]) : undefined,
     revenue_usd: pick(t, 'vendas_total_valor_dolar'),
     revenue_brl: pick(t, 'vendas_total_valor_real'),
     gross_usd: pick(t, 'faturamento_bruto_valor_dolar'),
@@ -104,7 +120,7 @@ async function ratoeiraDay(mcp, date) {
 async function ratoeiraTaboolaDay(mcp, date) {
   const args = { level: 'account', startDate: date, endDate: date, format: 'json' };
   if (env.TABOOLA_ACCOUNT_ID) args.accountsIds = [env.TABOOLA_ACCOUNT_ID];
-  const t = await withRetry(() => mcp.call('management_taboola_ads', args));
+  const t = await withRetry(() => mcp.call('management_taboola_ads', args), 4);
   return {
     tab_spend_brl: pick(t, 'custo_total_valor_real'),
     tab_spend_usd: pick(t, 'custo_total_valor_dolar'),
@@ -147,13 +163,28 @@ async function taboolaReport(dimension, start, end) {
   if (!res.ok) throw new Error(`Taboola ${dimension} HTTP ${res.status} ${await errBody(res)}`);
   return (await res.json()).results || [];
 }
-async function taboolaCampaigns(start, end) {
-  const rows = await taboolaReport('campaign_breakdown', start, end);
-  return rows.map((r) => ({
-    id: String(r.campaign ?? ''), name: r.campaign_name || String(r.campaign),
-    spend: num(r.spent), clicks: num(r.clicks), imps: num(r.impressions),
-    conv: num(r.cpa_actions_num), currency: r.currency || 'BRL',
-  })).filter((r) => r.spend > 0 || r.clicks > 0).sort((a, b) => b.spend - a.spend);
+let taboolaCurrency = null;
+const r2 = (v) => Math.round(v * 100) / 100;
+// campanhas por dia (uma chamada para o intervalo inteiro)
+async function taboolaCampaignDays(start, end) {
+  const out = {};
+  for (const r of await taboolaReport('campaign_day_breakdown', start, end)) {
+    const date = String(r.date).slice(0, 10);
+    if (r.currency) taboolaCurrency = r.currency;
+    if (!(num(r.spent) > 0 || num(r.clicks) > 0)) continue;
+    (out[date] ||= []).push({ id: String(r.campaign ?? ''), name: r.campaign_name || String(r.campaign), spend: r2(num(r.spent)), clicks: num(r.clicks), imps: num(r.impressions), conv: num(r.cpa_actions_num), cval: r2(num(r.conversions_value)) });
+  }
+  return out;
+}
+// gasto por país de um dia: {CC: [gasto, cliques, impressões, conversões]}
+async function taboolaCountryDay(date) {
+  const out = {};
+  for (const r of await taboolaReport('country_breakdown', date, date)) {
+    if (!(num(r.spent) > 0 || num(r.clicks) > 0)) continue;
+    const cc = String(r.country || r.country_code || '??').toUpperCase();
+    out[cc] = [r2(num(r.spent)), num(r.clicks), num(r.impressions), num(r.cpa_actions_num)];
+  }
+  return out;
 }
 
 // ---------- MGID API ----------
@@ -171,7 +202,11 @@ async function mgidLogin() {
     const src = j.data && typeof j.data === 'object' ? { ...j, ...j.data } : j;
     const tok = src.token ?? src.accessToken ?? src.access_token ?? src.apiToken;
     if (tok) { MGID_TOKEN = String(tok); console.log('MGID login OK (token novo gerado)'); }
-    else console.log(`[aviso] MGID login HTTP ${res.status} sem token. Estrutura: ${shape(j)}`);
+    else {
+      const msgs = j.errors ? Object.values(j.errors).flat().map(String).join(' | ') : shape(j);
+      console.log(`[aviso] MGID login recusado: ${msgs.slice(0, 200)}`);
+      errors.push({ src: 'mgid-login', msg: msgs.slice(0, 200) });
+    }
     const idAuth = String(src.idAuth ?? src.id_auth ?? src.clientId ?? src.client_id ?? src.userId ?? '');
     if (idAuth) { console.log(`MGID_CLIENT_ID confere com a conta do login: ${idAuth === MGID_CLIENT ? 'sim' : 'não — usando o da conta'}`); MGID_CLIENT = idAuth; }
   } catch (e) { console.log('[aviso] MGID login:', e.message); }
@@ -254,17 +289,26 @@ async function loadPrevious() {
 
 // ---------- mock ----------
 function mockData() {
+  const CC = { MX: 0.3, AR: 0.2, CL: 0.17, ES: 0.1, CO: 0.08, EC: 0.06, UY: 0.03, PE: 0.03, FR: 0.03 };
+  const camps = Array.from({ length: 9 }, (_, i) => ({ id: String(4100 + i), name: `NH | Memory ${['MX', 'AR', 'CL', 'ES', 'CO', 'FR'][i % 6]} | v${i + 1}`, w: 1 / (i + 1.5) }));
+  const mcamps = Array.from({ length: 5 }, (_, i) => ({ id: String(9100 + i), name: `MG | Memory ${['LATAM', 'FR', 'MX'][i % 3]} | v${i + 1}`, w: 1 / (i + 1.5) }));
+  const wsum = camps.reduce((a, c) => a + c.w, 0), msum = mcamps.reduce((a, c) => a + c.w, 0);
   const days = lastDays(HISTORY_DAYS).map((date, i) => {
     const fx = 5.45 + Math.sin(i / 5) * 0.08;
     const tab = 9000 + Math.random() * 4000, mg = 600 + Math.random() * 500;
     const tabRev = tab / fx * (1.2 + Math.random() * 0.5), mgRev = mg * (1.0 + Math.random() * 0.8);
-    const rev = tabRev + mgRev;
-    return { date, fx, revenue_usd: rev, revenue_brl: rev * fx, gross_usd: rev, sales: Math.round(rev / 55), sales_front: Math.round(rev / 80), upsells: Math.round(rev / 170), upsell_usd: rev * 0.45, refunds_usd: Math.random() * 60, refunds: Math.round(Math.random() * 2), untracked: Math.round(Math.random() * 3),
+    const rev = tabRev + mgRev, sales = Math.round(rev / 55);
+    const countries = Object.fromEntries(Object.entries(CC).map(([c, w]) => [c, [Math.round(sales * w), r2(rev * w * (0.8 + Math.random() * 0.4))]]));
+    const tab_ctry = Object.fromEntries(Object.entries(CC).map(([c, w]) => [c, [r2(tab * w * (0.8 + Math.random() * 0.4)), Math.round(tab * 4 * w), Math.round(tab * 2000 * w), Math.round(20 * w)]]));
+    const hours = Array.from({ length: 24 }, (_, h) => { const k = Math.max(0.1, Math.sin((h - 4) / 24 * Math.PI)); return [r2(rev / 14 * k * Math.random()), r2(tab / fx / 14 * k)]; });
+    return { date, fx, revenue_usd: rev, revenue_brl: rev * fx, gross_usd: rev, sales, sales_front: Math.round(sales * 0.68), upsells: Math.round(sales * 0.32), upsell_usd: rev * 0.45, refunds_usd: Math.random() * 60, refunds: Math.round(Math.random() * 2), untracked: Math.round(Math.random() * 3),
       tab_spend_brl: tab, tab_spend_usd: tab / fx, tab_rev_usd: tabRev, tab_sales: Math.round(tabRev / 55), tab_clicks: Math.round(tab * 4), tab_imps: Math.round(tab * 2000), tab_checkouts: Math.round(tab / 10), tab_pageviews: Math.round(tab * 7),
-      mgid_spend: mg, mgid_clicks: Math.round(mg * 12), mgid_imps: Math.round(mg * 5000), mgid_conv: Math.round(mg / 40) };
+      mgid_spend: mg, mgid_clicks: Math.round(mg * 12), mgid_imps: Math.round(mg * 5000), mgid_conv: Math.round(mg / 40),
+      countries, tab_ctry, hours,
+      tab_camps: camps.map((c) => ({ id: c.id, name: c.name, spend: r2(tab * c.w / wsum), clicks: Math.round(tab * 4 * c.w / wsum), imps: Math.round(tab * 2000 * c.w / wsum), conv: Math.round(30 * c.w / wsum), cval: 0 })),
+      mgid_camps: mcamps.map((c) => ({ id: c.id, name: c.name, spend: r2(mg * c.w / msum), clicks: Math.round(mg * 12 * c.w / msum), imps: Math.round(mg * 5000 * c.w / msum), conv: Math.round(mg / 40 * c.w / msum) })) };
   });
-  const camp = (p, n) => Array.from({ length: n }, (_, i) => ({ id: String(1000 + i), name: `${p} | Memory ${['LATAM', 'FR', 'MX', 'CO'][i % 4]} | v${i + 1}`, spend: 3000 / (i + 1), clicks: 12000 / (i + 1), imps: 5e6 / (i + 1), conv: Math.round(60 / (i + 1)) }));
-  return { days, campaigns: { d7: { taboola: camp('TB', 8), mgid: camp('MG', 5) }, d1: { taboola: camp('TB', 5), mgid: camp('MG', 3) } } };
+  return { days, tab_currency: 'BRL' };
 }
 
 // ---------- principal ----------
@@ -279,7 +323,8 @@ async function main() {
     const window = lastDays(HISTORY_DAYS);
     const refresh = new Set(window.slice(-REFRESH_DAYS));
     const need = (d, k) => refresh.has(d) || !prevByDate[d] || !prevByDate[d][k];
-    const todo = window.filter((d) => need(d, 'ok_r') || need(d, 'ok_rt') || (hasM && need(d, 'ok_m')));
+    const KEYS = [hasR && 'ok_r2', hasR && 'ok_rt', hasT && 'ok_tc', hasT && 'ok_tg', hasM && 'ok_m'].filter(Boolean);
+    const todo = window.filter((d) => KEYS.some((k) => need(d, k)));
     console.log(`Histórico anterior: ${prev ? Object.keys(prevByDate).length + ' dias' : 'nenhum'}. Atualizando ${todo.length} dia(s).`);
 
     let mcp = null;
@@ -287,58 +332,61 @@ async function main() {
     if (hasT) { try { await taboolaAuth(); console.log('Taboola OK'); await taboolaResolveAccount(); } catch (e) { logErr('taboola', e.message); } }
     if (hasM) { await mgidLogin(); await mgidLoadNames(); }
 
-    // Taboola diário pela API direta (fallback de gasto se a Ratoeira falhar)
-    let tabDaily = {};
+    // Taboola: diário + campanhas por dia (uma chamada cada para o intervalo)
+    let tabDaily = {}, tabCamps = null;
+    const tcDays = todo.filter((d) => need(d, 'ok_tc'));
     if (taboolaToken && todo.length) {
-      try { for (const r of await taboolaReport('day', todo[0], todo[todo.length - 1])) tabDaily[String(r.date).slice(0, 10)] = r; }
+      try { for (const r of await taboolaReport('day', todo[0], todo.at(-1))) tabDaily[String(r.date).slice(0, 10)] = r; }
       catch (e) { logErr('taboola-dia', e.message); }
     }
+    if (taboolaToken && tcDays.length) {
+      try { tabCamps = await taboolaCampaignDays(tcDays[0], tcDays.at(-1)); } catch (e) { logErr('taboola-campanhas', e.message); }
+    }
 
-    const days = [];
-    for (const date of window) {
-      if (!todo.includes(date)) { days.push(prevByDate[date]); continue; }
+    const byDate = { ...prevByDate };
+    let stopped = false, tgErr = 0, rErr = 0;
+    // do mais recente para o mais antigo: os dias novos aparecem primeiro
+    for (const date of todo.slice().reverse()) {
+      if (Date.now() > DEADLINE) { if (!stopped) console.log('[aviso] tempo limite desta execução atingido; o restante continua na próxima.'); stopped = true; }
       const old = prevByDate[date] || {};
       const d = { ...old, date };
-      if (mcp && need(date, 'ok_r')) {
-        try { Object.assign(d, await ratoeiraDay(mcp, date)); d.ok_r = true; } catch (e) { d.ok_r = false; logErr(`ratoeira ${date}`, e.message); }
+      if (!stopped && mcp && need(date, 'ok_r2')) {
+        try { Object.assign(d, await ratoeiraDay(mcp, date)); d.ok_r2 = d.ok_r = true; } catch (e) { d.ok_r2 = false; if (rErr++ < 5) logErr(`ratoeira ${date}`, e.message); }
       }
-      if (mcp && need(date, 'ok_rt')) {
-        try { Object.assign(d, await ratoeiraTaboolaDay(mcp, date)); d.ok_rt = true; } catch (e) { d.ok_rt = false; logErr(`ratoeira-taboola ${date}`, e.message); }
+      if (!stopped && mcp && need(date, 'ok_rt')) {
+        try { Object.assign(d, await ratoeiraTaboolaDay(mcp, date)); d.ok_rt = true; } catch (e) { d.ok_rt = false; if (rErr++ < 5) logErr(`ratoeira-taboola ${date}`, e.message); }
       }
       const td = tabDaily[date];
       if (td) {
         d.api_tab_spend = num(td.spent); d.api_tab_clicks = num(td.clicks); d.api_tab_imps = num(td.impressions); d.api_tab_conv = num(td.cpa_actions_num);
-        if (!mcp || !d.tab_spend_brl) { d.tab_spend_brl = d.api_tab_spend; d.tab_clicks = d.api_tab_clicks; d.tab_imps = d.api_tab_imps; }
+        if (!d.ok_rt) { d.tab_spend_brl = d.api_tab_spend; d.tab_spend_usd = 0; d.tab_clicks = d.api_tab_clicks; d.tab_imps = d.api_tab_imps; }
       }
-      if (hasM && need(date, 'ok_m')) {
-        try { const s = sumMgid(await withRetry(() => mgidStats(date, date))); d.mgid_spend = s.spent; d.mgid_clicks = s.clicks; d.mgid_imps = s.imps; d.mgid_conv = s.conv; d.ok_m = true; }
-        catch (e) { d.ok_m = false; if (!mgidDead || !errors.some((x) => x.src.startsWith('mgid'))) logErr(`mgid ${date}`, e.message); }
+      if (tabCamps && need(date, 'ok_tc')) { d.tab_camps = tabCamps[date] || []; d.ok_tc = true; }
+      if (!stopped && taboolaToken && need(date, 'ok_tg')) {
+        try { d.tab_ctry = await taboolaCountryDay(date); d.ok_tg = true; } catch (e) { d.ok_tg = false; if (tgErr++ < 2) logErr(`taboola-paises ${date}`, e.message); }
+      }
+      if (!stopped && hasM && need(date, 'ok_m')) {
+        try {
+          const c = await withRetry(() => mgidStats(date, date)); const s = sumMgid(c);
+          d.mgid_spend = s.spent; d.mgid_clicks = s.clicks; d.mgid_imps = s.imps; d.mgid_conv = s.conv; d.ok_m = true;
+          d.mgid_camps = Object.entries(c).filter(([id]) => id !== 'total' || Object.keys(c).length === 1)
+            .map(([id, r]) => ({ id, name: mgidNames[id] || `Campanha ${id}`, spend: r2(r.spent), clicks: r.clicks, imps: r.imps, conv: r.conv })).filter((r) => r.spend > 0 || r.clicks > 0);
+        } catch (e) { d.ok_m = false; if (!errors.some((x) => x.src.startsWith('mgid '))) logErr(`mgid ${date}`, e.message); }
       }
       // câmbio BRL por USD, derivado dos próprios números da Ratoeira
-      d.fx = d.revenue_usd > 0 ? d.revenue_brl / d.revenue_usd : d.r_cost_usd > 0 ? d.r_cost_brl / d.r_cost_usd : d.tab_spend_usd > 0 ? d.tab_spend_brl / d.tab_spend_usd : old.fx || days.at(-1)?.fx || 5.5;
-      d.partial = (hasR && !(d.ok_r && d.ok_rt)) || (hasM && !d.ok_m);
-      days.push(d);
+      d.fx = d.revenue_usd > 0 ? d.revenue_brl / d.revenue_usd : d.r_cost_usd > 0 ? d.r_cost_brl / d.r_cost_usd : d.tab_spend_usd > 0 ? d.tab_spend_brl / d.tab_spend_usd : old.fx || 0;
+      d.partial = KEYS.some((k) => !d[k]);
+      byDate[date] = d;
     }
-    // preenche câmbio faltante
-    for (const d of days) if (d && !d.fx) d.fx = days.find((x) => x?.fx)?.fx || 5.5;
-
-    const campaigns = { d7: {}, d1: {} };
-    const d7start = addDays(today, -6);
-    if (taboolaToken) {
-      try { campaigns.d7.taboola = await taboolaCampaigns(d7start, today); } catch (e) { logErr('taboola-campanhas', e.message); }
-      try { campaigns.d1.taboola = await taboolaCampaigns(today, today); } catch (e) { logErr('taboola-campanhas-hoje', e.message); }
-    }
-    if (hasM) {
-      const toRows = (c) => Object.entries(c).filter(([id]) => id !== 'total' || Object.keys(c).length === 1)
-        .map(([id, r]) => ({ id, name: mgidNames[id] || `Campanha ${id}`, spend: r.spent, clicks: r.clicks, imps: r.imps, conv: r.conv }))
-        .filter((r) => r.spend > 0 || r.clicks > 0).sort((a, b) => b.spend - a.spend);
-      try { campaigns.d7.mgid = toRows(await mgidStats(d7start, today)); } catch (e) { logErr('mgid-campanhas', e.message); }
-      try { campaigns.d1.mgid = toRows(await mgidStats(today, today)); } catch (e) { logErr('mgid-campanhas-hoje', e.message); }
-    }
-    payload = { days: days.filter(Boolean), campaigns };
+    // mantém todo o histórico (aba "Tudo"), ordenado
+    const days = Object.values(byDate).filter((d) => d?.date).sort((a, b) => a.date.localeCompare(b.date));
+    for (let i = 0; i < days.length; i++) if (!days[i].fx) days[i].fx = days[i - 1]?.fx || days.find((x) => x.fx)?.fx || 5.5;
+    const pending = days.filter((d) => d.partial && window.includes(d.date)).length;
+    if (pending) console.log(`Dias ainda incompletos: ${pending}`);
+    payload = { days, tab_currency: taboolaCurrency || prev?.tab_currency || 'BRL', sources: { ratoeira: !!mcp, taboola: !!taboolaToken, mgid: !!mgidMode } };
   }
 
-  payload.meta = { updated_at: new Date().toISOString(), today, tz: TZ, mgid_currency: MGID_CURRENCY, errors, mock: MOCK };
+  payload.meta = { updated_at: new Date().toISOString(), today, tz: TZ, mgid_currency: MGID_CURRENCY, errors, mock: MOCK, history_days: HISTORY_DAYS };
   await mkdir(OUT, { recursive: true });
   await cp('public', OUT, { recursive: true });
   await writeFile(`${OUT}/data.json`, JSON.stringify(payload));

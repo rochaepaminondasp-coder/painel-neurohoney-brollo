@@ -10,154 +10,287 @@
 <style>
 :root {
   color-scheme: light;
-  --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #f3f2ee;
+  --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #f1f0ec; --hover: rgba(11,11,11,0.04);
   --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
   --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
-  --s1: #2a78d6; --s2: #eb6834; --rev: #0b0b0b;
+  --s1: #2a78d6; --s2: #eb6834; --rev: #0b0b0b; --seq: #2a78d6;
   --good: #006300; --good-fill: #0ca30c; --bad: #d03b3b; --warn: #fab219;
-  --accent: #eda100;
+  --accent: #c98500;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232321;
+    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232321; --hover: rgba(255,255,255,0.05);
     --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
     --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
-    --s1: #3987e5; --s2: #d95926; --rev: #f0efec;
+    --s1: #3987e5; --s2: #d95926; --rev: #f0efec; --seq: #3987e5;
     --good: #0ca30c; --good-fill: #0ca30c; --bad: #e66767;
+    --accent: #eda100;
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232321;
+  --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232321; --hover: rgba(255,255,255,0.05);
   --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
   --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
-  --s1: #3987e5; --s2: #d95926; --rev: #f0efec;
+  --s1: #3987e5; --s2: #d95926; --rev: #f0efec; --seq: #3987e5;
   --good: #0ca30c; --good-fill: #0ca30c; --bad: #e66767;
+  --accent: #eda100;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { margin: 0; }
 body { background: var(--page); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
-.wrap { max-width: 1240px; margin: 0 auto; padding: 20px 16px 48px; }
-header { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+button, select, input { font: inherit; color: inherit; }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 20px 16px 48px; }
+header.top { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: baseline; justify-content: space-between; margin-bottom: 16px; }
 h1 { font-size: 20px; margin: 0; letter-spacing: -0.01em; }
 h1 small { font-weight: 400; color: var(--ink-2); }
-.sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
-.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 2px; }
-.seg button { border: 0; background: transparent; color: var(--ink-2); font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+.sub { color: var(--muted); font-size: 12px; }
+
+/* barra de filtros */
+.filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 6px; }
+.seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 3px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.seg::-webkit-scrollbar { display: none; }
+.seg button { border: 0; background: transparent; color: var(--ink-2); font-size: 14px; padding: 7px 13px; border-radius: 9px; cursor: pointer; white-space: nowrap; }
+.seg button:hover { color: var(--ink); }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--border); }
-.iconbtn { border: 1px solid var(--border); background: var(--surface); color: var(--ink-2); border-radius: 8px; padding: 5px 9px; cursor: pointer; font: inherit; font-size: 13px; }
+.dd { position: relative; display: inline-flex; align-items: center; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; }
+.dd select { appearance: none; -webkit-appearance: none; border: 0; background: transparent; padding: 9px 36px 9px 14px; font-weight: 600; cursor: pointer; border-radius: 12px; }
+.dd::after { content: ""; position: absolute; right: 14px; top: 50%; width: 7px; height: 7px; border-right: 2px solid var(--ink-2); border-bottom: 2px solid var(--ink-2); transform: translateY(-70%) rotate(45deg); pointer-events: none; }
+.dd select option { background: var(--surface); color: var(--ink); }
+.custom { display: inline-flex; gap: 6px; align-items: center; color: var(--ink-2); font-size: 13px; }
+.custom input { background: var(--surface); border: 1px solid var(--axis); border-radius: 8px; padding: 6px 8px; }
+.rangeinfo { color: var(--muted); font-size: 12px; margin: 2px 0 10px; }
+
+/* abas */
+nav.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: 6px 0 16px; overflow-x: auto; scrollbar-width: none; }
+nav.tabs::-webkit-scrollbar { display: none; }
+nav.tabs a { display: inline-flex; align-items: center; gap: 8px; padding: 12px 14px; color: var(--muted); text-decoration: none; font-size: 15px; font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+nav.tabs a:hover { color: var(--ink-2); }
+nav.tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
+nav.tabs svg { width: 18px; height: 18px; flex: none; }
+
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
 .grid { display: grid; gap: 12px; }
-.kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 12px; }
+.mb { margin-bottom: 12px; }
+.k4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.k2 { grid-template-columns: 1fr 1fr; }
+.c32 { grid-template-columns: 3fr 2fr; }
 .kpi .label { color: var(--ink-2); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.mcard { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px 20px; min-width: 0; }
+.mcard.hl { background: linear-gradient(135deg, color-mix(in srgb, var(--good-fill) 14%, var(--surface)) 0%, var(--surface) 55%); }
+.mcard.hl.loss { background: linear-gradient(135deg, color-mix(in srgb, var(--bad) 14%, var(--surface)) 0%, var(--surface) 55%); }
+.mhead { display: flex; align-items: center; gap: 10px; color: var(--ink-2); font-size: 15px; font-weight: 500; }
+.ico { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; flex: none; }
+.ico svg { width: 18px; height: 18px; }
+.mval { font-size: 30px; font-weight: 650; letter-spacing: -0.01em; margin: 14px 0 12px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 8px; background: var(--surface-2); color: var(--ink-2); white-space: nowrap; }
+.pill.up { color: var(--good); background: color-mix(in srgb, var(--good-fill) 14%, transparent); }
+.pill.down { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); }
 .kpi .value { font-size: 26px; font-weight: 650; margin-top: 4px; letter-spacing: -0.02em; }
+.kpi.small .value { font-size: 20px; }
 .kpi .note { color: var(--muted); font-size: 12px; margin-top: 2px; }
 .pos { color: var(--good); } .neg { color: var(--bad); }
-.nets { grid-template-columns: 1fr 1fr; margin-bottom: 12px; }
 .net h2 { font-size: 15px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
-.dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex: none; }
 .net dl { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px 12px; margin: 0; }
 .net dt { color: var(--muted); font-size: 12px; }
 .net dd { margin: 2px 0 0; font-size: 16px; font-weight: 600; }
-.charts { grid-template-columns: 3fr 2fr; margin-bottom: 12px; }
 .card h3 { font-size: 14px; margin: 0 0 4px; }
 .card .hint { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
 .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--ink-2); margin-bottom: 8px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .line-key { width: 14px; height: 2px; background: var(--rev); display: inline-block; }
 .chartbox { position: relative; height: 280px; }
-.tablecard { margin-bottom: 12px; }
+.chartbox.tall { height: 340px; }
 .tablehead { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .tablescroll { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th, td { padding: 7px 8px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; font-variant-numeric: tabular-nums; }
-th { color: var(--muted); font-weight: 500; font-size: 12px; position: sticky; top: 0; background: var(--surface); }
-th:first-child, td:first-child { text-align: left; }
-td.name { max-width: 380px; overflow: hidden; text-overflow: ellipsis; }
+th, td { padding: 8px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; font-variant-numeric: tabular-nums; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; background: var(--surface); }
+th.sort { cursor: pointer; user-select: none; }
+th.sort:hover { color: var(--ink); }
+th.sort[data-dir]::after { content: " ↓"; } th.sort[data-dir="asc"]::after { content: " ↑"; }
+th:first-child, td:first-child, th.l, td.l { text-align: left; }
+td.name { max-width: 420px; overflow: hidden; text-overflow: ellipsis; }
+tbody tr:hover td { background: var(--hover); }
+tr.click { cursor: pointer; }
 tfoot td { font-weight: 650; border-bottom: 0; }
-.empty { color: var(--muted); padding: 16px 0; text-align: center; }
+.empty { color: var(--muted); padding: 20px 0; text-align: center !important; }
+.search { background: var(--surface); border: 1px solid var(--axis); border-radius: 8px; padding: 7px 10px; min-width: 220px; }
 .alert { border: 1px solid var(--border); border-left: 3px solid var(--warn); background: var(--surface); padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; color: var(--ink-2); }
 .alert summary { cursor: pointer; color: var(--ink); }
+.note { color: var(--muted); font-size: 12px; }
+.bar { height: 6px; border-radius: 3px; background: var(--seq); min-width: 2px; }
+.barcell { width: 120px; }
+.tag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
+.status { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.settings dl { display: grid; grid-template-columns: 200px 1fr; gap: 12px 16px; margin: 0; align-items: center; }
+.settings dt { color: var(--ink-2); }
+.settings dd { margin: 0; }
+.settings ul { margin: 6px 0 0; padding-left: 18px; color: var(--ink-2); }
 footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
-@media (max-width: 960px) { .kpis { grid-template-columns: repeat(2, minmax(0,1fr)); } .nets, .charts { grid-template-columns: 1fr; } }
-@media (max-width: 520px) { .net dl { grid-template-columns: repeat(2, minmax(0,1fr)); } .kpi .value { font-size: 22px; } }
+@media (max-width: 960px) { .k4 { grid-template-columns: repeat(2, minmax(0,1fr)); } .k2, .c32 { grid-template-columns: 1fr; } .settings dl { grid-template-columns: 1fr; gap: 4px; } .settings dd { margin-bottom: 10px; } }
+@media (max-width: 520px) { .mval { font-size: 19px; margin: 10px 0 8px; } .mcard { padding: 12px; } .mhead { font-size: 13px; } .ico { width: 28px; height: 28px; } .pill { font-size: 12px; padding: 3px 8px; } .net dl { grid-template-columns: repeat(2, minmax(0,1fr)); } .kpi .value { font-size: 22px; } .search { min-width: 0; width: 100%; } .dd { flex: 1 1 100%; } .dd select { width: 100%; } }
 </style>
 </head>
 <body>
-<div class="wrap" id="app">
-  <header>
-    <div>
-      <h1>Painel NeuroHoney <small>· Brollo</small></h1>
-      <div class="sub" id="updated"></div>
-    </div>
-    <div class="controls">
-      <div class="seg" id="period" role="group" aria-label="Período">
-        <button data-p="today">Hoje</button><button data-p="yesterday">Ontem</button><button data-p="7">7 dias</button><button data-p="14">14 dias</button><button data-p="30">30 dias</button>
-      </div>
-      <div class="seg" id="cur" role="group" aria-label="Moeda">
-        <button data-c="BRL">R$</button><button data-c="USD">US$</button>
-      </div>
-      <button class="iconbtn" id="theme" title="Alternar tema">◐</button>
-          </div>
+<div class="wrap">
+  <header class="top">
+    <h1>Painel NeuroHoney <small>· Brollo</small></h1>
+    <div class="sub" id="updated">Carregando…</div>
   </header>
+
+  <div class="filters">
+    <div class="seg" id="period" role="group" aria-label="Período">
+      <button data-p="today">Hoje</button><button data-p="yesterday">Ontem</button><button data-p="7">7d</button><button data-p="14">14d</button><button data-p="30">30d</button><button data-p="month">Mês</button><button data-p="90">90d</button><button data-p="all">Tudo</button><button data-p="custom">Personalizado</button>
+    </div>
+    <label class="dd" title="Plataforma"><select id="plat" aria-label="Plataforma">
+      <option value="all">📡 Todas as plataformas</option><option value="taboola">Taboola</option><option value="mgid">MGID</option>
+    </select></label>
+    <label class="dd" title="País"><select id="country" aria-label="País"><option value="all">🌎 Todos os países</option></select></label>
+  </div>
+  <div class="custom" id="customrange" hidden>
+    De <input type="date" id="from"> até <input type="date" id="to">
+  </div>
+  <div class="rangeinfo" id="rangeinfo"></div>
+
+  <nav class="tabs" id="tabs">
+    <a href="#visao-geral" data-tab="visao-geral"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Visão geral</a>
+    <a href="#plataformas" data-tab="plataformas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>Plataformas</a>
+    <a href="#campanhas" data-tab="campanhas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 6h3v2a3 3 0 0 1-3 3M7 6H4v2a3 3 0 0 0 3 3"/></svg>Campanhas</a>
+    <a href="#paises" data-tab="paises"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg>Países</a>
+    <a href="#historico" data-tab="historico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>Histórico</a>
+    <a href="#configuracoes" data-tab="configuracoes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Configurações</a>
+  </nav>
 
   <div id="alerts"></div>
 
-  <section class="grid kpis" id="kpis"></section>
-
-  <section class="grid nets">
-    <div class="card net" id="net-taboola"></div>
-    <div class="card net" id="net-mgid"></div>
-  </section>
-
-  <section class="grid charts">
-    <div class="card">
-      <h3>Faturamento × gasto por dia</h3>
-      <p class="hint">Barras empilhadas: gasto por rede. Linha: faturamento total.</p>
-      <div class="legend"><span><i class="dot" style="background:var(--s1)"></i>Gasto Taboola</span><span><i class="dot" style="background:var(--s2)"></i>Gasto MGID</span><span><i class="line-key"></i>Faturamento</span></div>
-      <div class="chartbox"><canvas id="c-daily" aria-label="Faturamento e gasto por dia"></canvas></div>
-    </div>
-    <div class="card">
-      <h3>Lucro por dia</h3>
-      <p class="hint">Faturamento − gasto das duas redes.</p>
-      <div class="legend"><span><i class="dot" style="background:var(--good-fill)"></i>Lucro</span><span><i class="dot" style="background:var(--bad)"></i>Prejuízo</span></div>
-      <div class="chartbox"><canvas id="c-profit" aria-label="Lucro por dia"></canvas></div>
-    </div>
-  </section>
-
-  <section class="card tablecard">
-    <div class="tablehead">
-      <h3>Campanhas</h3>
-      <div class="controls">
-        <div class="seg" id="cnet" role="group" aria-label="Rede"><button data-n="taboola">Taboola</button><button data-n="mgid">MGID</button></div>
-        <div class="seg" id="crange" role="group" aria-label="Janela"><button data-r="d1">Hoje</button><button data-r="d7">7 dias</button></div>
+  <!-- VISÃO GERAL -->
+  <section data-panel="visao-geral">
+    <div class="grid k4 mb" id="kpis"></div>
+    <div class="grid k4 mb" id="kpis2"></div>
+    <div class="grid c32 mb">
+      <div class="card">
+        <h3 id="c-main-title">Faturamento × gasto</h3>
+        <p class="hint" id="c-main-hint"></p>
+        <div class="legend" id="c-main-legend"></div>
+        <div class="chartbox"><canvas id="c-main"></canvas></div>
+      </div>
+      <div class="card">
+        <h3 id="c-profit-title">Lucro por dia</h3>
+        <p class="hint">Faturamento − gasto em anúncios.</p>
+        <div class="legend"><span><i class="dot" style="background:var(--good-fill)"></i>Lucro</span><span><i class="dot" style="background:var(--bad)"></i>Prejuízo</span></div>
+        <div class="chartbox"><canvas id="c-profit"></canvas></div>
       </div>
     </div>
-    <div class="tablescroll"><table id="t-camp"></table></div>
   </section>
 
-  <section class="card tablecard">
-    <div class="tablehead"><h3>Resumo diário</h3></div>
-    <div class="tablescroll"><table id="t-days"></table></div>
+  <!-- PLATAFORMAS -->
+  <section data-panel="plataformas" hidden>
+    <div class="grid k2 mb">
+      <div class="card net" id="net-taboola"></div>
+      <div class="card net" id="net-mgid"></div>
+    </div>
+    <div class="card mb">
+      <h3>Comparativo</h3>
+      <p class="hint">Receita da MGID = faturamento total − receita atribuída ao Taboola (inclui vendas sem origem identificada).</p>
+      <div class="tablescroll"><table id="t-plat"></table></div>
+    </div>
+    <div class="card mb">
+      <h3>Gasto por dia e plataforma</h3>
+      <div class="legend"><span><i class="dot" style="background:var(--s1)"></i>Taboola</span><span><i class="dot" style="background:var(--s2)"></i>MGID</span></div>
+      <div class="chartbox"><canvas id="c-plat"></canvas></div>
+    </div>
   </section>
 
-  <footer>Fontes: Ratoeira Ads (vendas e receita atribuída ao Taboola), API Taboola e API MGID. Receita MGID = faturamento total − receita atribuída ao Taboola (inclui vendas não atribuídas). Câmbio do dia calculado a partir da Ratoeira.</footer>
+  <!-- CAMPANHAS -->
+  <section data-panel="campanhas" hidden>
+    <div class="card mb">
+      <div class="tablehead">
+        <div><h3>Campanhas</h3><div class="note" id="camp-note"></div></div>
+        <input type="search" class="search" id="camp-search" placeholder="Buscar campanha…">
+      </div>
+      <div class="tablescroll"><table id="t-camp"></table></div>
+    </div>
+  </section>
+
+  <!-- PAÍSES -->
+  <section data-panel="paises" hidden>
+    <div class="grid c32 mb">
+      <div class="card">
+        <h3>Faturamento por país</h3>
+        <p class="hint">10 maiores no período. Clique numa linha da tabela para filtrar o painel por país.</p>
+        <div class="chartbox tall"><canvas id="c-country"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Resumo</h3>
+        <div id="country-summary"></div>
+      </div>
+    </div>
+    <div class="card mb">
+      <div class="tablehead"><h3>Países</h3><div class="note">Gasto por país vem do Taboola; a MGID não informa gasto por país.</div></div>
+      <div class="tablescroll"><table id="t-country"></table></div>
+    </div>
+  </section>
+
+  <!-- HISTÓRICO -->
+  <section data-panel="historico" hidden>
+    <div class="card mb">
+      <div class="tablehead"><h3>Histórico diário</h3><div class="note" id="hist-note"></div></div>
+      <div class="tablescroll"><table id="t-days"></table></div>
+    </div>
+  </section>
+
+  <!-- CONFIGURAÇÕES -->
+  <section data-panel="configuracoes" hidden>
+    <div class="card mb settings">
+      <h3 style="margin-bottom:14px">Preferências</h3>
+      <dl>
+        <dt>Moeda</dt><dd><div class="seg" id="cur"><button data-c="BRL">R$ Real</button><button data-c="USD">US$ Dólar</button></div></dd>
+        <dt>Tema</dt><dd><div class="seg" id="theme"><button data-t="auto">Automático</button><button data-t="light">Claro</button><button data-t="dark">Escuro</button></div></dd>
+      </dl>
+    </div>
+    <div class="card mb settings">
+      <h3 style="margin-bottom:14px">Fontes de dados</h3>
+      <dl id="sources"></dl>
+    </div>
+    <div class="card mb settings">
+      <h3 style="margin-bottom:8px">Como os números são calculados</h3>
+      <ul>
+        <li><b>Faturamento, vendas e upsells</b>: Ratoeira Ads (todas as vendas do projeto).</li>
+        <li><b>Gasto Taboola</b>: Ratoeira/API Taboola. <b>Gasto MGID</b>: API MGID.</li>
+        <li><b>Receita Taboola</b>: vendas que a Ratoeira atribuiu ao Taboola. <b>Receita MGID</b>: faturamento total − receita Taboola.</li>
+        <li><b>Lucro</b> = faturamento − gasto em anúncios (sem taxas, impostos e custo de produto). <b>ROAS</b> = faturamento ÷ gasto. <b>CPA</b> = gasto ÷ vendas front.</li>
+        <li><b>Câmbio</b>: o do dia, calculado a partir dos valores em R$ e US$ da Ratoeira.</li>
+        <li>Com um <b>país</b> selecionado: faturamento daquele país (todas as fontes) e gasto do Taboola naquele país.</li>
+        <li>Atualização automática a cada 30 minutos. A página recarrega os dados sozinha a cada 10 minutos.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>Painel NeuroHoney · Brollo · dados: Ratoeira Ads, Taboola, MGID.</footer>
 </div>
 
 <script>
-const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} }, del(k) { try { localStorage.removeItem(k); } catch {} } };
-const state = { period: store.get('nh.period') || '7', cur: store.get('nh.cur') || 'BRL', cnet: 'taboola', crange: 'd7', data: null };
+const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+const TABS = ['visao-geral', 'plataformas', 'campanhas', 'paises', 'historico', 'configuracoes'];
+const state = {
+  data: null, period: store.get('nh.period') || '7', from: null, to: null,
+  plat: 'all', country: 'all', cur: store.get('nh.cur') || 'BRL', theme: store.get('nh.theme') || 'auto',
+  tab: TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'visao-geral',
+  campSort: { key: 'spend', dir: 'desc' }, campQuery: '',
+};
 const charts = {};
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // ---------- tema ----------
-const savedTheme = store.get('nh.theme'); if (savedTheme) document.documentElement.dataset.theme = savedTheme;
-document.getElementById('theme').onclick = () => {
-  const dark = getComputedStyle(document.documentElement).colorScheme.includes('dark');
-  const t = dark ? 'light' : 'dark'; document.documentElement.dataset.theme = t; store.set('nh.theme', t); if (state.data) render();
-};
+function applyTheme() { if (state.theme === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = state.theme; }
+applyTheme();
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => state.data && render());
 
 // ---------- dados ----------
 async function load() {
@@ -165,73 +298,245 @@ async function load() {
     const res = await fetch('data.json?t=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) throw new Error('Os dados ainda não foram publicados.');
     state.data = await res.json();
+    buildCountryOptions();
     render();
   } catch (e) {
-    if (!state.data) document.getElementById('alerts').innerHTML = `<div class="alert">${esc(e.message || 'Erro ao carregar os dados.')}</div>`;
+    if (!state.data) { $('updated').textContent = ''; $('alerts').innerHTML = `<div class="alert">${esc(e.message || 'Erro ao carregar os dados.')}</div>`; }
   }
 }
 load();
 setInterval(load, 10 * 60 * 1000);
 
-// ---------- controles ----------
-function bindSeg(id, attr, key, persist) {
-  const el = document.getElementById(id);
-  el.querySelectorAll('button').forEach((b) => b.onclick = () => { state[key] = b.dataset[attr]; if (persist) store.set(persist, state[key]); render(); });
+// ---------- países ----------
+const regionNames = (() => { try { return new Intl.DisplayNames(['pt-BR'], { type: 'region' }); } catch { return null; } })();
+const cname = (cc) => { try { return (cc && cc.length === 2 && regionNames?.of(cc)) || cc; } catch { return cc; } };
+const flag = (cc) => (cc && /^[A-Z]{2}$/.test(cc) ? String.fromCodePoint(...[...cc].map((c) => 0x1f1a5 + c.charCodeAt(0))) : '🏳️');
+function buildCountryOptions() {
+  const tot = {};
+  for (const d of state.data.days) for (const [cc, v] of Object.entries(d.countries || {})) tot[cc] = (tot[cc] || 0) + v[1];
+  for (const d of state.data.days) for (const cc of Object.keys(d.tab_ctry || {})) tot[cc] ??= 0;
+  const list = Object.keys(tot).sort((a, b) => tot[b] - tot[a]);
+  const sel = $('country'), cur = state.country;
+  sel.innerHTML = `<option value="all">🌎 Todos os países</option>` + list.map((cc) => `<option value="${esc(cc)}">${flag(cc)} ${esc(cname(cc))}</option>`).join('');
+  sel.value = list.includes(cur) ? cur : 'all'; state.country = sel.value;
 }
-bindSeg('period', 'p', 'period', 'nh.period'); bindSeg('cur', 'c', 'cur', 'nh.cur'); bindSeg('cnet', 'n', 'cnet'); bindSeg('crange', 'r', 'crange');
-function syncSeg(id, attr, val) { document.querySelectorAll(`#${id} button`).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset[attr] === val))); }
+
+// ---------- controles ----------
+function bindSeg(id, attr, fn) { $(id).querySelectorAll('button').forEach((b) => (b.onclick = () => fn(b.dataset[attr]))); }
+function syncSeg(id, attr, val) { $(id).querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset[attr] === val))); }
+bindSeg('period', 'p', (v) => { state.period = v; store.set('nh.period', v); render(); });
+bindSeg('cur', 'c', (v) => { state.cur = v; store.set('nh.cur', v); render(); });
+bindSeg('theme', 't', (v) => { state.theme = v; store.set('nh.theme', v); applyTheme(); render(); });
+$('plat').onchange = (e) => { state.plat = e.target.value; render(); };
+$('country').onchange = (e) => { state.country = e.target.value; render(); };
+$('from').onchange = (e) => { state.from = e.target.value; render(); };
+$('to').onchange = (e) => { state.to = e.target.value; render(); };
+$('camp-search').oninput = (e) => { state.campQuery = e.target.value.toLowerCase(); drawCampaigns(); };
+window.addEventListener('hashchange', () => { const t = location.hash.slice(1); if (TABS.includes(t)) { state.tab = t; render(); } });
 
 // ---------- formatação ----------
-const fmtMoney = (v) => (state.cur === 'BRL' ? 'R$ ' : 'US$ ') + (Math.abs(v) >= 100000 ? (v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mil' : v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-const fmtMoneyS = (v) => (state.cur === 'BRL' ? 'R$ ' : 'US$ ') + v.toLocaleString('pt-BR', { minimumFractionDigits: Math.abs(v) < 10 ? 2 : 0, maximumFractionDigits: Math.abs(v) < 10 ? 2 : 0 });
+const sym = () => (state.cur === 'BRL' ? 'R$ ' : 'US$ ');
+const fmtMoney = (v) => sym() + (Math.abs(v) >= 100000 ? (v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mil' : v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+const fmtMoneyS = (v) => sym() + v.toLocaleString('pt-BR', { minimumFractionDigits: Math.abs(v) < 10 ? 2 : 0, maximumFractionDigits: Math.abs(v) < 10 ? 2 : 0 });
 const fmtInt = (v) => Math.round(v).toLocaleString('pt-BR');
-const fmtX = (v) => isFinite(v) ? v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '×' : '—';
-const fmtPct = (v) => isFinite(v) ? v.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%' : '—';
+const fmtX = (v) => (isFinite(v) ? v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '×' : '—');
+const fmtPct = (v, dig = 1) => (isFinite(v) ? v.toLocaleString('pt-BR', { maximumFractionDigits: dig }) + '%' : '—');
 const div = (a, b) => (b ? a / b : NaN);
-const dash = (v, f) => (isFinite(v) ? f(v) : '—');
+const dash = (v, f) => (isFinite(v) && v !== null ? f(v) : '—');
 const shortDate = (iso) => iso.slice(8, 10) + '/' + iso.slice(5, 7);
+const longDate = (iso) => new Date(iso + 'T12:00:00Z').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const addDays = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 
-// converte valores do dia para a moeda escolhida
-function conv(d) {
-  const fx = d.fx || 5.5, mgUsd = state.data.meta.mgid_currency === 'BRL' ? (d.mgid_spend || 0) / fx : (d.mgid_spend || 0);
-  const k = state.cur === 'BRL' ? fx : 1;
-  const tabSpendUsd = d.tab_spend_usd || (d.tab_spend_brl || 0) / fx;
-  const rev = (d.revenue_usd || 0) * k, tabRev = (d.tab_rev_usd || 0) * k;
-  const tab = tabSpendUsd * k, mg = mgUsd * k;
-  return { date: d.date, rev, tabRev, mgRev: Math.max(0, rev - tabRev), tab, mg, spend: tab + mg, profit: rev - tab - mg,
-    sales: d.sales || 0, front: d.sales_front || 0, ups: d.upsells || 0, refunds: (d.refunds_usd || 0) * k,
-    tabSales: d.tab_sales || 0, tabClicks: d.tab_clicks || 0, tabImps: d.tab_imps || 0, tabCheckouts: d.tab_checkouts || 0,
-    mgClicks: d.mgid_clicks || 0, mgImps: d.mgid_imps || 0, mgConv: d.mgid_conv || 0, partial: d.partial };
+// ---------- período ----------
+function range() {
+  const days = state.data.days, today = state.data.meta.today, first = days[0]?.date || today;
+  switch (state.period) {
+    case 'today': return [today, today];
+    case 'yesterday': return [addDays(today, -1), addDays(today, -1)];
+    case 'month': return [today.slice(0, 8) + '01', today];
+    case 'all': return [first, today];
+    case 'custom': {
+      const f = state.from || addDays(today, -6), t = state.to || today;
+      return f <= t ? [f, t] : [t, f];
+    }
+    default: return [addDays(today, -(Number(state.period) - 1)), today];
+  }
 }
-function periodDays() {
-  const days = state.data.days; const today = state.data.meta.today;
-  if (state.period === 'today') return days.filter((d) => d.date === today);
-  if (state.period === 'yesterday') { const y = days.filter((d) => d.date < today).at(-1); return y ? [y] : []; }
-  return days.slice(-Number(state.period));
-}
-const sum = (rows, k) => rows.reduce((a, r) => a + (r[k] || 0), 0);
+const inRange = ([a, b]) => state.data.days.filter((d) => d.date >= a && d.date <= b);
 
-function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+// ---------- valores de um dia, na moeda e com os filtros escolhidos ----------
+function vals(d) {
+  const fx = d.fx || 5.5, k = state.cur === 'BRL' ? fx : 1, meta = state.data.meta;
+  const tabCur = state.data.tab_currency || 'BRL';
+  const tabToUsd = (x) => (tabCur === 'USD' ? x : x / fx);
+  const mgUsd = meta.mgid_currency === 'BRL' ? (d.mgid_spend || 0) / fx : (d.mgid_spend || 0);
+  const tab = (d.tab_spend_usd || (d.tab_spend_brl || 0) / fx) * k, mg = mgUsd * k;
+  const revAll = (d.revenue_usd || 0) * k, tabRev = (d.tab_rev_usd || 0) * k, mgRev = Math.max(0, revAll - tabRev);
+  const v = { date: d.date, fx, partial: d.partial, tab, mg, tabRev, mgRev, revAll,
+    tabSales: d.tab_sales || 0, mgSales: Math.max(0, (d.sales || 0) - (d.tab_sales || 0)),
+    tabClicks: d.tab_clicks || 0, tabImps: d.tab_imps || 0, mgClicks: d.mgid_clicks || 0, mgImps: d.mgid_imps || 0, mgConv: d.mgid_conv || 0,
+    front: d.sales_front || 0, ups: d.upsells || 0, refunds: (d.refunds_usd || 0) * k, upsRev: (d.upsell_usd || 0) * k };
+  const c = state.country;
+  if (c !== 'all') {
+    const cr = d.countries?.[c] || [0, 0], tc = d.tab_ctry?.[c] || [0, 0, 0, 0];
+    v.rev = cr[1] * k; v.sales = cr[0]; v.front = NaN; v.ups = NaN;
+    v.tabC = tabToUsd(tc[0]) * k; v.tabClicksC = tc[1]; v.tabImpsC = tc[2];
+    if (state.plat === 'mgid') { v.spend = NaN; } else { v.spend = v.tabC; }
+  } else if (state.plat === 'taboola') { v.rev = tabRev; v.spend = tab; v.sales = v.tabSales; v.front = v.tabSales; v.ups = NaN; }
+  else if (state.plat === 'mgid') { v.rev = mgRev; v.spend = mg; v.sales = v.mgSales; v.front = v.mgSales; v.ups = NaN; }
+  else { v.rev = revAll; v.spend = tab + mg; v.sales = d.sales || 0; }
+  v.profit = v.rev - v.spend;
+  return v;
+}
+const sum = (rows, k) => rows.reduce((a, r) => a + (isFinite(r[k]) ? r[k] : 0), 0);
+const sumN = (rows, k) => (rows.some((r) => isFinite(r[k])) ? sum(rows, k) : NaN);
 
 // ---------- render ----------
 function render() {
-  syncSeg('period', 'p', state.period); syncSeg('cur', 'c', state.cur); syncSeg('cnet', 'n', state.cnet); syncSeg('crange', 'r', state.crange);
+  if (!state.data) return;
+  syncSeg('period', 'p', state.period); syncSeg('cur', 'c', state.cur); syncSeg('theme', 't', state.theme);
+  document.querySelectorAll('#tabs a').forEach((a) => a.setAttribute('aria-current', a.dataset.tab === state.tab ? 'page' : 'false'));
+  document.querySelectorAll('[data-panel]').forEach((p) => (p.hidden = p.dataset.panel !== state.tab));
   const meta = state.data.meta;
-  document.getElementById('updated').textContent = `Atualizado em ${new Date(meta.updated_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' })} (horário de Brasília)` + (meta.mock ? ' · DADOS FICTÍCIOS' : '');
+  $('updated').textContent = `Atualizado em ${new Date(meta.updated_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' })} (Brasília)` + (meta.mock ? ' · DADOS FICTÍCIOS' : '');
 
-  const al = document.getElementById('alerts');
-  al.innerHTML = meta.errors?.length ? `<details class="alert"><summary>⚠ ${meta.errors.length} fonte(s) com falha na última atualização. Os números podem estar incompletos.</summary><ul>${meta.errors.map((e) => `<li><b>${esc(e.src)}</b>: ${esc(e.msg)}</li>`).join('')}</ul></details>` : '';
+  $('customrange').hidden = state.period !== 'custom';
+  const r = range();
+  if (state.period === 'custom') {
+    const days = state.data.days; $('from').min = $('to').min = days[0]?.date; $('from').max = $('to').max = meta.today;
+    $('from').value = r[0]; $('to').value = r[1];
+  }
+  const n = inRange(r).length;
+  $('rangeinfo').textContent = (r[0] === r[1] ? longDate(r[0]) : `${longDate(r[0])} – ${longDate(r[1])}`) + ` · ${n} dia${n === 1 ? '' : 's'} com dados`;
 
-  const rows = periodDays().map(conv);
-  const T = Object.fromEntries(['rev', 'tabRev', 'mgRev', 'tab', 'mg', 'spend', 'profit', 'sales', 'front', 'ups', 'refunds', 'tabSales', 'tabClicks', 'tabImps', 'tabCheckouts', 'mgClicks', 'mgImps', 'mgConv'].map((k) => [k, sum(rows, k)]));
+  // avisos
+  const al = [];
+  if (meta.errors?.length) al.push(`<details class="alert"><summary>⚠ ${meta.errors.length} aviso(s) na última atualização. Alguns números podem estar incompletos.</summary><ul>${meta.errors.map((e) => `<li><b>${esc(e.src)}</b>: ${esc(e.msg)}</li>`).join('')}</ul></details>`);
+  if (state.country !== 'all' && state.plat === 'mgid') al.push(`<div class="alert">A MGID não informa gasto por país. Com um país selecionado, use "Todas as plataformas" ou "Taboola".</div>`);
+  else if (state.country !== 'all') al.push(`<div class="alert">Filtrando por <b>${flag(state.country)} ${esc(cname(state.country))}</b>: faturamento de todas as fontes nesse país × gasto do Taboola nesse país (a MGID não informa gasto por país).</div>`);
+  $('alerts').innerHTML = al.join('');
 
-  const kpi = (label, value, note, cls = '') => `<div class="card kpi"><div class="label">${label}</div><div class="value ${cls}">${value}</div><div class="note">${note}</div></div>`;
-  document.getElementById('kpis').innerHTML =
-    kpi('Faturamento', fmtMoney(T.rev), `${fmtInt(T.sales)} vendas · ticket ${dash(div(T.rev, T.front), fmtMoneyS)}`) +
-    kpi('Gasto em anúncios', fmtMoney(T.spend), `Taboola ${fmtMoneyS(T.tab)} · MGID ${fmtMoneyS(T.mg)}`) +
-    kpi('Lucro', fmtMoney(T.profit), `ROI ${fmtPct(div(T.profit, T.spend) * 100)} · margem ${fmtPct(div(T.profit, T.rev) * 100)}`, T.profit >= 0 ? 'pos' : 'neg') +
-    kpi('ROAS', fmtX(div(T.rev, T.spend)), `CPA ${dash(div(T.spend, T.front), fmtMoneyS)} · ${fmtInt(T.front)} front + ${fmtInt(T.ups)} upsell`);
+  const rows = inRange(r).map(vals);
+  ({ 'visao-geral': drawOverview, plataformas: drawPlatforms, campanhas: drawCampaigns, paises: drawCountries, historico: drawHistory, configuracoes: drawSettings }[state.tab])(rows, r);
+}
 
+const kpi = (label, value, note, cls = '', small = false) => `<div class="card kpi${small ? ' small' : ''}"><div class="label">${label}</div><div class="value ${cls}">${value}</div><div class="note">${note}</div></div>`;
+
+function totals(rows) {
+  const T = {}; for (const k of ['rev', 'spend', 'profit', 'sales', 'front', 'ups', 'tab', 'mg', 'tabRev', 'mgRev', 'revAll', 'refunds', 'upsRev', 'tabC']) T[k] = sumN(rows, k);
+  return T;
+}
+
+// ---------- VISÃO GERAL ----------
+function drawOverview(rows, r) {
+  const T = totals(rows);
+  // período anterior de mesmo tamanho, para comparação
+  const len = Math.round((new Date(r[1]) - new Date(r[0])) / 864e5) + 1;
+  const pr = [addDays(r[0], -len), addDays(r[0], -1)];
+  const prevRows = inRange(pr).map(vals), P = totals(prevRows), hasPrev = prevRows.length > 0;
+  const prevLabel = state.period === 'today' ? 'ontem' : state.period === 'yesterday' ? 'anteontem' : 'antes';
+  const m = (X) => {
+    const front = isFinite(X.front) ? X.front : X.sales;
+    return { profit: X.profit, rev: X.rev, spend: X.spend, roas: div(X.rev, X.spend), front, cpa: div(X.spend, front), ticket: div(X.rev, front), upr: isFinite(X.ups) ? div(X.ups, X.front) * 100 : NaN };
+  };
+  const cur = m(T), prv = m(P);
+  const ICONS = {
+    profit: '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
+    rev: '<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 9.5v5M18 9.5v5"/>',
+    spend: '<path d="M4 10v4h3l5 4V6L7 10H4z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/>',
+    roas: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>',
+    front: '<path d="M3 4h2l2.4 11h11l2-8H6.2"/><circle cx="9" cy="19.5" r="1.5"/><circle cx="17" cy="19.5" r="1.5"/>',
+    cpa: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    ticket: '<path d="M3 12V4h8l10 10-8 8L3 12z"/><circle cx="7.5" cy="8" r="1.5"/>',
+    upr: '<path d="M12 19V5M5 12l7-7 7 7"/><path d="M5 21h14"/>',
+  };
+  const TINT = { profit: '--good-fill', rev: '--seq', spend: '--warn', roas: '--good-fill', front: '--seq', cpa: '--warn', ticket: '--seq', upr: '--good-fill' };
+  const card = (key, label, fmt, opts = {}) => {
+    const v = cur[key], pv = prv[key];
+    const pills = [];
+    if (hasPrev && isFinite(v) && isFinite(pv)) {
+      if (opts.showPrev) pills.push(`<span class="pill">${prevLabel} ${fmt(pv)}</span>`);
+      const ch = opts.points ? v - pv : pv ? (v - pv) / Math.abs(pv) * 100 : NaN;
+      if (isFinite(ch) && Math.abs(ch) >= 0.5) {
+        const better = opts.lowerIsBetter ? ch < 0 : ch > 0;
+        pills.push(`<span class="pill ${opts.neutral ? '' : better ? 'up' : 'down'}" title="vs. ${prevLabel}: ${fmt(pv)}">${ch > 0 ? '▲' : '▼'} ${Math.abs(ch).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}${opts.points ? ' p.p.' : '%'}</span>`);
+      }
+    }
+    if (opts.extra) pills.push(`<span class="pill">${opts.extra}</span>`);
+    const cls = opts.color ? (v >= 0 ? 'pos' : 'neg') : '';
+    return `<div class="mcard${opts.hl ? ' hl' + (v < 0 ? ' loss' : '') : ''}"><div class="mhead"><span class="ico" style="color:var(${TINT[key]});background:color-mix(in srgb, var(${TINT[key]}) 16%, transparent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[key]}</svg></span>${label}</div><div class="mval ${cls}">${dash(v, fmt)}</div><div class="pills">${pills.join('') || '<span class="pill">sem comparação</span>'}</div></div>`;
+  };
+  const money = (v) => sym() + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const platLabel = { all: '', taboola: ' · Taboola', mgid: ' · MGID (est.)' }[state.plat];
+  $('kpis').innerHTML =
+    card('profit', 'Lucro líquido', money, { showPrev: true, color: true, hl: true }) +
+    card('rev', 'Faturamento' + platLabel, money, { showPrev: true }) +
+    card('spend', 'Investimento em tráfego', money, { showPrev: true, neutral: true }) +
+    card('roas', 'ROAS', fmtX, {});
+  $('kpis2').innerHTML =
+    card('front', isFinite(T.front) ? 'Vendas front' : 'Vendas', fmtInt, { showPrev: true }) +
+    card('cpa', 'CPA (custo por venda)', money, { lowerIsBetter: true }) +
+    card('ticket', 'Ticket médio (c/ upsell)', money, {}) +
+    card('upr', 'Conversão de upsell', (v) => fmtPct(v), { points: true, extra: isFinite(T.ups) ? `${fmtInt(T.ups)} upsells` : 'só no total geral' });
+
+  // gráfico principal: por hora quando é um dia só e temos dados por hora
+  const single = r[0] === r[1], day = single ? state.data.days.find((d) => d.date === r[0]) : null;
+  const ink = css('--rev'), s1 = css('--s1'), s2 = css('--s2');
+  if (single && day?.hours && state.plat === 'all' && state.country === 'all') {
+    const k = state.cur === 'BRL' ? day.fx || 5.5 : 1;
+    let accR = 0, accS = 0;
+    const cum = day.hours.map(([rv, sp]) => { accR += rv * k; accS += sp * k; return [accR, accS]; });
+    $('c-main-title').textContent = 'Faturamento × gasto ao longo do dia';
+    $('c-main-hint').textContent = 'Acumulado por hora (horário de Brasília). Gasto por hora vem da Ratoeira (Taboola).';
+    $('c-main-legend').innerHTML = `<span><i class="line-key"></i>Faturamento acumulado</span><span><i class="dot" style="background:${s1}"></i>Gasto acumulado</span>`;
+    chart('main', 'c-main', { type: 'line', data: { labels: day.hours.map((_, h) => String(h).padStart(2, '0') + 'h'), datasets: [
+      { label: 'Faturamento', data: cum.map((c) => c[0]), borderColor: ink, backgroundColor: ink, borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, tension: 0.2 },
+      { label: 'Gasto', data: cum.map((c) => c[1]), borderColor: s1, backgroundColor: s1, borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, tension: 0.2 },
+    ] }, options: baseOpts({ footer: (it) => { const c = cum[it[0].dataIndex]; return `Lucro até aqui: ${fmtMoneyS(c[0] - c[1])}`; } }) });
+  } else {
+    const ctx = contextRows(r);
+    $('c-main-title').textContent = 'Faturamento × gasto por dia';
+    const showStack = state.plat === 'all' && state.country === 'all';
+    $('c-main-hint').textContent = showStack ? 'Barras empilhadas: gasto por plataforma. Linha: faturamento.' : 'Barras: gasto. Linha: faturamento.';
+    $('c-main-legend').innerHTML = showStack ? `<span><i class="dot" style="background:${s1}"></i>Gasto Taboola</span><span><i class="dot" style="background:${s2}"></i>Gasto MGID</span><span><i class="line-key"></i>Faturamento</span>` : `<span><i class="dot" style="background:${state.plat === 'mgid' ? s2 : s1}"></i>Gasto</span><span><i class="line-key"></i>Faturamento</span>`;
+    const surface = css('--surface');
+    const sets = [{ type: 'line', stack: 'rev', label: 'Faturamento', data: ctx.map((v) => v.rev), borderColor: ink, backgroundColor: ink, borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, tension: 0.25, order: 0 }];
+    if (showStack) sets.push(
+      { type: 'bar', stack: 's', label: 'Gasto Taboola', data: ctx.map((v) => v.tab), backgroundColor: s1, order: 1, maxBarThickness: 28 },
+      { type: 'bar', stack: 's', label: 'Gasto MGID', data: ctx.map((v) => v.mg), backgroundColor: s2, borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: 'bottom', order: 1, maxBarThickness: 28 });
+    else sets.push({ type: 'bar', stack: 's', label: 'Gasto', data: ctx.map((v) => (isFinite(v.spend) ? v.spend : null)), backgroundColor: state.plat === 'mgid' ? s2 : s1, borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: 'bottom', order: 1, maxBarThickness: 28 });
+    const o = baseOpts({ footer: (it) => { const v = ctx[it[0].dataIndex]; return `Lucro: ${dash(v.profit, fmtMoneyS)} · ROAS ${fmtX(div(v.rev, v.spend))}`; } });
+    o.scales.x.stacked = true; o.scales.y.stacked = true;
+    chart('main', 'c-main', { data: { labels: ctx.map((v) => shortDate(v.date)), datasets: sets }, options: o });
+  }
+  const ctx = contextRows(r);
+  $('c-profit-title').textContent = 'Lucro por dia';
+  chart('profit', 'c-profit', { type: 'bar', data: { labels: ctx.map((v) => shortDate(v.date)), datasets: [{ label: 'Lucro', data: ctx.map((v) => (isFinite(v.profit) ? v.profit : null)), backgroundColor: ctx.map((v) => (v.profit >= 0 ? css('--good-fill') : css('--bad'))), borderRadius: 4, borderSkipped: 'start', maxBarThickness: 28 }] }, options: baseOpts() });
+}
+// gráficos diários mostram pelo menos 14 dias para dar contexto
+function contextRows(r) {
+  const days = state.data.days;
+  const n = Math.round((new Date(r[1]) - new Date(r[0])) / 864e5) + 1;
+  const start = n < 14 ? addDays(r[1], -13) : r[0];
+  return days.filter((d) => d.date >= start && d.date <= r[1]).map(vals);
+}
+function baseOpts(cb = {}) {
+  const muted = css('--muted'), grid = css('--grid'), axis = css('--axis');
+  Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", sans-serif'; Chart.defaults.color = muted;
+  return { maintainAspectRatio: false, animation: { duration: 250 }, interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { display: false }, tooltip: { backgroundColor: css('--surface'), titleColor: css('--ink'), bodyColor: css('--ink-2'), footerColor: css('--ink-2'), borderColor: axis, borderWidth: 1, padding: 10, boxPadding: 4, usePointStyle: true,
+      callbacks: { label: (c) => ` ${c.dataset.label}: ${c.parsed.y == null ? '—' : fmtMoneyS(c.parsed.y)}`, ...cb } } },
+    scales: { x: { grid: { display: false }, border: { color: axis }, ticks: { maxRotation: 0, autoSkipPadding: 8 } },
+      y: { grid: { color: grid }, border: { display: false }, beginAtZero: true, ticks: { callback: (v) => (Math.abs(v) >= 1000 ? (v / 1000).toLocaleString('pt-BR') + 'k' : v) } } } };
+}
+function chart(key, id, cfg) { charts[key]?.destroy(); charts[key] = new Chart($(id), cfg); }
+
+// ---------- PLATAFORMAS ----------
+function drawPlatforms(rows, r) {
+  const T = totals(rows);
+  const tc = sum(rows, 'tabClicks'), ti = sum(rows, 'tabImps'), mc = sum(rows, 'mgClicks'), mi = sum(rows, 'mgImps');
+  const ts = sum(rows, 'tabSales'), ms = sum(rows, 'mgSales'), mconv = sum(rows, 'mgConv');
   const net = (name, color, spend, rev, sales, clicks, imps, extra) => `
     <h2><i class="dot" style="background:var(${color})"></i>${name}</h2>
     <dl>
@@ -240,71 +545,119 @@ function render() {
       <div><dt>ROAS</dt><dd>${fmtX(div(rev, spend))}</dd></div>
       <div><dt>Lucro</dt><dd class="${rev - spend >= 0 ? 'pos' : 'neg'}">${fmtMoneyS(rev - spend)}</dd></div>
       <div><dt>Cliques</dt><dd>${fmtInt(clicks)}</dd></div>
-      <div><dt>CPC</dt><dd>${dash(div(spend, clicks), (v) => fmtMoney(v))}</dd></div>
-      <div><dt>CTR</dt><dd>${dash(div(clicks, imps) * 100, (v) => v.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + '%')}</dd></div>
+      <div><dt>CPC</dt><dd>${dash(div(spend, clicks), fmtMoney)}</dd></div>
+      <div><dt>CTR</dt><dd>${fmtPct(div(clicks, imps) * 100, 2)}</dd></div>
       ${extra}
     </dl>`;
-  document.getElementById('net-taboola').innerHTML = net('Taboola', '--s1', T.tab, T.tabRev, T.tabSales, T.tabClicks, T.tabImps, `<div><dt>Vendas · CPA</dt><dd>${fmtInt(T.tabSales)} · ${dash(div(T.tab, T.tabSales), fmtMoneyS)}</dd></div>`);
-  document.getElementById('net-mgid').innerHTML = net('MGID', '--s2', T.mg, T.mgRev, 0, T.mgClicks, T.mgImps, `<div><dt>Conversões MGID</dt><dd>${fmtInt(T.mgConv)}</dd></div>`);
-
-  drawCharts();
-  drawCampaigns();
-  drawDays();
-}
-function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
-
-function drawCharts() {
-  // gráficos sempre mostram pelo menos 14 dias para dar contexto
-  const n = ['today', 'yesterday', '7'].includes(state.period) ? 14 : Number(state.period);
-  const rows = state.data.days.slice(-n).map(conv);
-  const labels = rows.map((r) => shortDate(r.date));
-  const ink2 = css('--ink-2'), muted = css('--muted'), grid = css('--grid'), axis = css('--axis'), surface = css('--surface');
-  Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", sans-serif';
-  Chart.defaults.color = muted;
-  const tooltip = { backgroundColor: surface, titleColor: css('--ink'), bodyColor: ink2, borderColor: axis, borderWidth: 1, padding: 10, boxPadding: 4, usePointStyle: true,
-    callbacks: { label: (c) => ` ${c.dataset.label}: ${fmtMoneyS(c.parsed.y)}` } };
-  const scales = (stacked) => ({
-    x: { stacked, grid: { display: false }, border: { color: axis }, ticks: { maxRotation: 0, autoSkipPadding: 8 } },
-    y: { stacked, grid: { color: grid }, border: { display: false }, ticks: { callback: (v) => (Math.abs(v) >= 1000 ? (v / 1000).toLocaleString('pt-BR') + 'k' : v) } },
-  });
-  const bar = { borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: 'bottom', borderWidth: { top: 2 }, borderColor: surface, maxBarThickness: 28 };
-
-  charts.daily?.destroy();
-  charts.daily = new Chart(document.getElementById('c-daily'), {
-    data: { labels, datasets: [
-      { type: 'line', stack: 'rev', label: 'Faturamento', data: rows.map((r) => r.rev), borderColor: css('--rev'), backgroundColor: css('--rev'), borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, tension: 0.25, order: 0 },
-      { type: 'bar', label: 'Gasto Taboola', data: rows.map((r) => r.tab), backgroundColor: css('--s1'), ...bar, borderRadius: 0, borderWidth: 0, stack: 's', order: 1 },
-      { type: 'bar', label: 'Gasto MGID', data: rows.map((r) => r.mg), backgroundColor: css('--s2'), ...bar, borderWidth: { bottom: 2 }, borderSkipped: false, stack: 's', order: 1 },
-    ] },
-    options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { ...tooltip, callbacks: { ...tooltip.callbacks, footer: (items) => { const r = rows[items[0].dataIndex]; return `Lucro: ${fmtMoneyS(r.profit)} · ROAS ${fmtX(div(r.rev, r.spend))}`; } } } }, scales: { x: scales(true).x, y: { ...scales(true).y, beginAtZero: true } } },
-  });
-
-  charts.profit?.destroy();
-  charts.profit = new Chart(document.getElementById('c-profit'), {
-    type: 'bar',
-    data: { labels, datasets: [{ label: 'Lucro', data: rows.map((r) => r.profit), backgroundColor: rows.map((r) => (r.profit >= 0 ? css('--good-fill') : css('--bad'))), borderRadius: 4, borderSkipped: 'start', maxBarThickness: 28 }] },
-    options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip }, scales: scales(false) },
-  });
+  $('net-taboola').innerHTML = net('Taboola', '--s1', T.tab, T.tabRev, ts, tc, ti, `<div><dt>Vendas · CPA</dt><dd>${fmtInt(ts)} · ${dash(div(T.tab, ts), fmtMoneyS)}</dd></div>`);
+  $('net-mgid').innerHTML = net('MGID', '--s2', T.mg, T.mgRev, ms, mc, mi, `<div><dt>Conversões (MGID)</dt><dd>${fmtInt(mconv)}</dd></div>`);
+  const spendAll = T.tab + T.mg;
+  const row = (name, color, spend, rev, sales, clicks, imps, bold) => `<tr${bold ? ' style="font-weight:650"' : ''}><td class="l"><span class="tag">${color ? `<i class="dot" style="background:var(${color})"></i>` : ''}${name}</span></td><td>${fmtMoneyS(spend)}</td><td>${fmtPct(div(spend, spendAll) * 100, 0)}</td><td>${fmtMoneyS(rev)}</td><td>${fmtX(div(rev, spend))}</td><td class="${rev - spend >= 0 ? 'pos' : 'neg'}">${fmtMoneyS(rev - spend)}</td><td>${fmtInt(sales)}</td><td>${dash(div(spend, sales), fmtMoneyS)}</td><td>${fmtInt(clicks)}</td><td>${dash(div(spend, clicks), fmtMoney)}</td><td>${fmtPct(div(clicks, imps) * 100, 2)}</td></tr>`;
+  $('t-plat').innerHTML = `<thead><tr><th>Plataforma</th><th>Gasto</th><th>% gasto</th><th>Receita</th><th>ROAS</th><th>Lucro</th><th>Vendas</th><th>CPA</th><th>Cliques</th><th>CPC</th><th>CTR</th></tr></thead><tbody>
+    ${row('Taboola', '--s1', T.tab, T.tabRev, ts, tc, ti)}${row('MGID', '--s2', T.mg, T.mgRev, ms, mc, mi)}</tbody><tfoot>${row('Total', '', spendAll, T.revAll, ts + ms, tc + mc, ti + mi, true)}</tfoot>`;
+  const ctx = contextRows(r);
+  const o = baseOpts(); o.scales.x.stacked = true; o.scales.y.stacked = true;
+  chart('plat', 'c-plat', { type: 'bar', data: { labels: ctx.map((v) => shortDate(v.date)), datasets: [
+    { label: 'Taboola', data: ctx.map((v) => v.tab), backgroundColor: css('--s1'), maxBarThickness: 28 },
+    { label: 'MGID', data: ctx.map((v) => v.mg), backgroundColor: css('--s2'), borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: 'bottom', maxBarThickness: 28 },
+  ] }, options: o });
 }
 
+// ---------- CAMPANHAS ----------
 function drawCampaigns() {
-  const t = document.getElementById('t-camp');
-  const list = state.data.campaigns?.[state.crange]?.[state.cnet];
-  if (!list || !list.length) { t.innerHTML = `<tbody><tr><td class="empty" colspan="7">Sem dados de campanha para essa rede/janela.</td></tr></tbody>`; return; }
-  const fx = state.data.days.at(-1)?.fx || 5.5;
-  const srcCur = state.cnet === 'mgid' ? state.data.meta.mgid_currency : (list[0].currency || 'BRL');
-  const k = srcCur === state.cur ? 1 : state.cur === 'BRL' ? fx : 1 / fx;
-  const rows = list.map((r) => ({ ...r, spend: r.spend * k }));
-  const tot = { spend: sum(rows, 'spend'), clicks: sum(rows, 'clicks'), imps: sum(rows, 'imps'), conv: sum(rows, 'conv') };
-  const tr = (r, tag = 'td') => `<tr><${tag} class="name" title="${esc(r.name)}">${esc(r.name)}</${tag}><td>${fmtMoneyS(r.spend)}</td><td>${fmtInt(r.clicks)}</td><td>${dash(div(r.spend, r.clicks), fmtMoney)}</td><td>${dash(div(r.clicks, r.imps) * 100, (v) => v.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + '%')}</td><td>${fmtInt(r.conv)}</td><td>${dash(div(r.spend, r.conv), fmtMoneyS)}</td></tr>`;
-  t.innerHTML = `<thead><tr><th>Campanha</th><th>Gasto</th><th>Cliques</th><th>CPC</th><th>CTR</th><th>Conv. (rede)</th><th>CPA (rede)</th></tr></thead><tbody>${rows.map((r) => tr(r)).join('')}</tbody><tfoot>${tr({ name: `Total (${rows.length})`, ...tot })}</tfoot>`;
+  const r = range(), days = inRange(r);
+  const tabCur = state.data.tab_currency || 'BRL', mgCur = state.data.meta.mgid_currency;
+  const agg = {};
+  const add = (net, list, d, srcCur) => {
+    const fx = d.fx || 5.5;
+    const conv = (x) => (srcCur === state.cur ? x : state.cur === 'BRL' ? x * fx : x / fx);
+    for (const c of list || []) {
+      const a = (agg[net + c.id] ||= { net, id: c.id, name: c.name, spend: 0, clicks: 0, imps: 0, conv: 0, cval: 0 });
+      a.name = c.name || a.name; a.spend += conv(c.spend || 0); a.clicks += c.clicks || 0; a.imps += c.imps || 0; a.conv += c.conv || 0; a.cval += conv(c.cval || 0);
+    }
+  };
+  for (const d of days) {
+    if (state.plat !== 'mgid') add('Taboola', d.tab_camps, d, tabCur);
+    if (state.plat !== 'taboola') add('MGID', d.mgid_camps, d, mgCur);
+  }
+  let rows = Object.values(agg).filter((x) => x.spend > 0 || x.clicks > 0);
+  const hasVal = rows.some((x) => x.cval > 0);
+  if (state.campQuery) rows = rows.filter((x) => x.name.toLowerCase().includes(state.campQuery) || x.id.includes(state.campQuery));
+  const derived = (x) => ({ ...x, cpc: div(x.spend, x.clicks), ctr: div(x.clicks, x.imps) * 100, cpa: div(x.spend, x.conv), roas: div(x.cval, x.spend) });
+  rows = rows.map(derived);
+  const { key, dir } = state.campSort;
+  rows.sort((a, b) => { const va = a[key], vb = b[key]; const s = typeof va === 'string' ? va.localeCompare(vb) : (isFinite(va) ? va : -Infinity) - (isFinite(vb) ? vb : -Infinity); return dir === 'asc' ? s : -s; });
+  const missing = days.length && days.every((d) => !d.tab_camps && !d.mgid_camps);
+  $('camp-note').textContent = (missing ? 'Os dados por campanha começam a aparecer após a próxima atualização. ' : '') + (state.country !== 'all' ? 'O filtro de país não se aplica às campanhas. ' : '') + 'Conversões e CPA conforme reportados por cada rede.';
+  const cols = [['net', 'Rede', 'l'], ['name', 'Campanha', 'l'], ['spend', 'Gasto'], ['clicks', 'Cliques'], ['cpc', 'CPC'], ['ctr', 'CTR'], ['conv', 'Conv.'], ['cpa', 'CPA']].concat(hasVal ? [['cval', 'Receita (rede)'], ['roas', 'ROAS (rede)']] : []);
+  const tot = derived({ spend: sum(rows, 'spend'), clicks: sum(rows, 'clicks'), imps: sum(rows, 'imps'), conv: sum(rows, 'conv'), cval: sum(rows, 'cval') });
+  const cell = (x, k) => ({ net: `<span class="tag"><i class="dot" style="background:var(${x.net === 'MGID' ? '--s2' : '--s1'})"></i>${x.net}</span>`, name: `<span title="${esc(x.name)} (${esc(x.id)})">${esc(x.name)}</span>`, spend: fmtMoneyS(x.spend), clicks: fmtInt(x.clicks), cpc: dash(x.cpc, fmtMoney), ctr: fmtPct(x.ctr, 2), conv: fmtInt(x.conv), cpa: dash(x.cpa, fmtMoneyS), cval: fmtMoneyS(x.cval), roas: fmtX(x.roas) }[k]);
+  $('t-camp').innerHTML = !rows.length ? `<tbody><tr><td class="empty">Sem campanhas com gasto nesse período${state.campQuery ? ' para essa busca' : ''}.</td></tr></tbody>` :
+    `<thead><tr>${cols.map(([k, l, c]) => `<th class="sort ${c || ''}" data-k="${k}"${state.campSort.key === k ? ` data-dir="${dir}"` : ''}>${l}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map((x) => `<tr>${cols.map(([k, , c]) => `<td class="${c || ''}${k === 'name' ? ' name' : ''}">${cell(x, k)}</td>`).join('')}</tr>`).join('')}</tbody>
+    <tfoot><tr><td class="l">Total</td><td class="l">${rows.length} campanha${rows.length === 1 ? '' : 's'}</td>${cols.slice(2).map(([k]) => `<td>${cell(tot, k)}</td>`).join('')}</tr></tfoot>`;
+  $('t-camp').querySelectorAll('th.sort').forEach((th) => (th.onclick = () => { const k = th.dataset.k; state.campSort = { key: k, dir: state.campSort.key === k && state.campSort.dir === 'desc' ? 'asc' : 'desc' }; drawCampaigns(); }));
 }
 
-function drawDays() {
-  const rows = state.data.days.slice().reverse().map(conv);
-  const t = document.getElementById('t-days');
-  t.innerHTML = `<thead><tr><th>Dia</th><th>Faturamento</th><th>Gasto Taboola</th><th>Gasto MGID</th><th>Lucro</th><th>ROAS</th><th>Vendas</th><th>Front</th><th>Upsell</th><th>CPA</th></tr></thead><tbody>${rows.map((r) =>
-    `<tr><td>${shortDate(r.date)}${r.partial ? ' <span title="Alguma fonte falhou neste dia">⚠</span>' : ''}</td><td>${fmtMoneyS(r.rev)}</td><td>${fmtMoneyS(r.tab)}</td><td>${fmtMoneyS(r.mg)}</td><td class="${r.profit >= 0 ? 'pos' : 'neg'}">${fmtMoneyS(r.profit)}</td><td>${fmtX(div(r.rev, r.spend))}</td><td>${fmtInt(r.sales)}</td><td>${fmtInt(r.front)}</td><td>${fmtInt(r.ups)}</td><td>${dash(div(r.spend, r.front), fmtMoneyS)}</td></tr>`).join('')}</tbody>`;
+// ---------- PAÍSES ----------
+function drawCountries() {
+  const r = range(), days = inRange(r);
+  const tabCur = state.data.tab_currency || 'BRL';
+  const agg = {};
+  for (const d of days) {
+    const fx = d.fx || 5.5, k = state.cur === 'BRL' ? fx : 1;
+    for (const [cc, [s, rv]] of Object.entries(d.countries || {})) { const a = (agg[cc] ||= { cc, sales: 0, rev: 0, spend: 0, clicks: 0 }); a.sales += s; a.rev += rv * k; }
+    for (const [cc, [sp, cl]] of Object.entries(d.tab_ctry || {})) { const a = (agg[cc] ||= { cc, sales: 0, rev: 0, spend: 0, clicks: 0 }); a.spend += (tabCur === 'USD' ? sp : sp / fx) * k; a.clicks += cl; }
+  }
+  const rows = Object.values(agg).filter((x) => x.rev > 0 || x.spend > 0).sort((a, b) => b.rev - a.rev || b.spend - a.spend);
+  const totRev = sum(rows, 'rev'), totSpend = sum(rows, 'spend'), totSales = sum(rows, 'sales');
+  const max = Math.max(...rows.map((x) => x.rev), 1);
+  const missing = days.length && days.every((d) => !d.countries);
+  $('t-country').innerHTML = !rows.length ? `<tbody><tr><td class="empty">${missing ? 'Os dados por país começam a aparecer após a próxima atualização.' : 'Sem vendas nesse período.'}</td></tr></tbody>` :
+    `<thead><tr><th>País</th><th class="l barcell"></th><th>Faturamento</th><th>% fat.</th><th>Vendas</th><th>Ticket</th><th>Gasto Taboola</th><th>ROAS</th><th>Lucro</th><th>Cliques</th></tr></thead>
+    <tbody>${rows.map((x) => `<tr class="click" data-cc="${esc(x.cc)}"${state.country === x.cc ? ' style="font-weight:650"' : ''}><td>${flag(x.cc)} ${esc(cname(x.cc))}</td><td class="l barcell"><div class="bar" style="width:${(x.rev / max) * 100}%"></div></td><td>${fmtMoneyS(x.rev)}</td><td>${fmtPct(div(x.rev, totRev) * 100)}</td><td>${fmtInt(x.sales)}</td><td>${dash(div(x.rev, x.sales), fmtMoneyS)}</td><td>${x.spend ? fmtMoneyS(x.spend) : '—'}</td><td>${x.spend ? fmtX(div(x.rev, x.spend)) : '—'}</td><td class="${x.rev - x.spend >= 0 ? 'pos' : 'neg'}">${fmtMoneyS(x.rev - x.spend)}</td><td>${x.clicks ? fmtInt(x.clicks) : '—'}</td></tr>`).join('')}</tbody>
+    <tfoot><tr><td>Total</td><td></td><td>${fmtMoneyS(totRev)}</td><td>100%</td><td>${fmtInt(totSales)}</td><td>${dash(div(totRev, totSales), fmtMoneyS)}</td><td>${fmtMoneyS(totSpend)}</td><td>${fmtX(div(totRev, totSpend))}</td><td class="${totRev - totSpend >= 0 ? 'pos' : 'neg'}">${fmtMoneyS(totRev - totSpend)}</td><td>${fmtInt(sum(rows, 'clicks'))}</td></tr></tfoot>`;
+  $('t-country').querySelectorAll('tr.click').forEach((tr) => (tr.onclick = () => { const cc = tr.dataset.cc; state.country = state.country === cc ? 'all' : cc; $('country').value = state.country; render(); }));
+  const top = rows.slice(0, 10);
+  $('country-summary').innerHTML = rows.length ? `<div class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
+    ${kpi('Países com venda', fmtInt(rows.filter((x) => x.sales > 0).length), '', '', true)}
+    ${kpi('Maior mercado', `${flag(rows[0].cc)} ${esc(cname(rows[0].cc))}`, fmtPct(div(rows[0].rev, totRev) * 100) + ' do faturamento', '', true)}
+    ${kpi('Top 3', fmtPct(div(sum(rows.slice(0, 3), 'rev'), totRev) * 100, 0), 'do faturamento', '', true)}
+    ${kpi('ROAS (Taboola)', fmtX(div(totRev, totSpend)), 'Faturamento ÷ gasto Taboola', '', true)}</div>` : '<div class="note">Sem dados.</div>';
+  const o = baseOpts(); o.indexAxis = 'y'; o.interaction = { mode: 'nearest', intersect: true, axis: 'y' };
+  o.scales = { x: { grid: { color: css('--grid') }, border: { display: false }, ticks: { callback: (v) => (Math.abs(v) >= 1000 ? (v / 1000).toLocaleString('pt-BR') + 'k' : v) } }, y: { grid: { display: false }, border: { color: css('--axis') } } };
+  o.plugins.tooltip.callbacks.afterLabel = (c) => { const x = top[c.dataIndex]; return ` ${fmtInt(x.sales)} vendas · ROAS ${x.spend ? fmtX(div(x.rev, x.spend)) : '—'}`; };
+  chart('country', 'c-country', { type: 'bar', data: { labels: top.map((x) => `${flag(x.cc)} ${cname(x.cc)}`), datasets: [{ label: 'Faturamento', data: top.map((x) => x.rev), backgroundColor: css('--seq'), borderRadius: 4, borderSkipped: 'start', maxBarThickness: 22 }] }, options: o });
+}
+
+// ---------- HISTÓRICO ----------
+function drawHistory(rows) {
+  const list = rows.slice().reverse();
+  $('hist-note').textContent = `${list.length} dia${list.length === 1 ? '' : 's'} no período · ⚠ = alguma fonte falhou nesse dia`;
+  const T = totals(rows);
+  const tr = (v, label) => `<tr><td>${label}</td><td>${fmtMoneyS(v.rev)}</td><td>${dash(v.spend, fmtMoneyS)}</td><td>${fmtMoneyS(v.tab)}</td><td>${fmtMoneyS(v.mg)}</td><td class="${v.profit >= 0 ? 'pos' : 'neg'}">${dash(v.profit, fmtMoneyS)}</td><td>${fmtX(div(v.rev, v.spend))}</td><td>${fmtInt(v.sales)}</td><td>${isFinite(v.front) ? fmtInt(v.front) : '—'}</td><td>${isFinite(v.ups) ? fmtInt(v.ups) : '—'}</td><td>${dash(div(v.spend, isFinite(v.front) ? v.front : v.sales), fmtMoneyS)}</td><td class="note">${v.fx ? v.fx.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}</td></tr>`;
+  $('t-days').innerHTML = !list.length ? `<tbody><tr><td class="empty">Sem dados nesse período.</td></tr></tbody>` :
+    `<thead><tr><th>Dia</th><th>Faturamento</th><th>Gasto</th><th>Taboola</th><th>MGID</th><th>Lucro</th><th>ROAS</th><th>Vendas</th><th>Front</th><th>Upsell</th><th>CPA</th><th>Câmbio</th></tr></thead>
+    <tbody>${list.map((v) => tr(v, `${shortDate(v.date)}/${v.date.slice(2, 4)}${v.partial ? ' <span title="Alguma fonte falhou neste dia">⚠</span>' : ''}`)).join('')}</tbody>
+    <tfoot>${tr({ ...T, fx: 0 }, 'Total')}</tfoot>`;
+}
+
+// ---------- CONFIGURAÇÕES ----------
+function drawSettings() {
+  const meta = state.data.meta, src = state.data.sources || {}, errs = meta.errors || [];
+  const st = (ok, label) => `<span class="status" style="color:var(${ok ? '--good' : '--bad'})">${ok ? '●' : '●'} ${label}</span>`;
+  const has = (p) => errs.some((e) => e.src.startsWith(p));
+  const days = state.data.days;
+  const last = days.at(-1);
+  $('sources').innerHTML = `
+    <dt>Ratoeira Ads</dt><dd>${st(src.ratoeira !== false && !has('ratoeira'), src.ratoeira === false ? 'Sem conexão' : has('ratoeira') ? 'Conectada, com avisos' : 'Conectada')}</dd>
+    <dt>Taboola</dt><dd>${st(src.taboola !== false && !has('taboola'), src.taboola === false ? 'Sem conexão' : has('taboola') ? 'Conectado, com avisos' : 'Conectado')}</dd>
+    <dt>MGID</dt><dd>${st(!!src.mgid && !has('mgid'), src.mgid ? 'Conectada' : 'Sem acesso — verifique MGID_EMAIL/MGID_PASSWORD ou MGID_TOKEN')}</dd>
+    <dt>Última atualização</dt><dd>${new Date(meta.updated_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</dd>
+    <dt>Histórico guardado</dt><dd>${days.length} dias (${days[0] ? longDate(days[0].date) : '—'} – ${last ? longDate(last.date) : '—'})${days.filter((d) => d.partial).length ? ` · ${days.filter((d) => d.partial).length} dia(s) incompleto(s), completados nas próximas atualizações` : ''}</dd>
+    <dt>Câmbio mais recente</dt><dd>US$ 1 = R$ ${(last?.fx || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
+    <dt>Moedas de origem</dt><dd>Taboola em ${esc(state.data.tab_currency || 'BRL')} · MGID em ${esc(meta.mgid_currency)} · vendas em USD</dd>
+    ${errs.length ? `<dt>Avisos</dt><dd><ul>${errs.map((e) => `<li><b>${esc(e.src)}</b>: ${esc(e.msg)}</li>`).join('')}</ul></dd>` : ''}`;
 }
 </script>
 </body>
