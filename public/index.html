@@ -373,7 +373,7 @@ function vals(d) {
   const mgCur = state.data.mgid_currency || meta.mgid_currency || 'USD';
   const mgToUsd = (x) => (mgCur === 'BRL' ? x / fx : x);
   const mgUsd = mgToUsd(d.mgid_spend || 0);
-  const tab = (d.tab_spend_usd || (d.tab_spend_brl || 0) / fx) * k, mg = mgUsd * k;
+  const tab = (d.tab_spend_usd || tabToUsd(d.tab_spend_brl || 0)) * k, mg = mgUsd * k;
   const revAll = (d.revenue_usd || 0) * k, tabRev = (d.tab_rev_usd || 0) * k, mgRev = Math.max(0, revAll - tabRev);
   const v = { date: d.date, fx, partial: d.partial, tab, mg, tabRev, mgRev, revAll,
     tabSales: d.tab_sales || 0, mgSales: Math.max(0, (d.sales || 0) - (d.tab_sales || 0)),

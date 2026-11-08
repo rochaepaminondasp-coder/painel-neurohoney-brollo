@@ -119,8 +119,14 @@ async function ratoeiraDay(mcp, date) {
 
 async function ratoeiraTaboolaDay(mcp, date) {
   const args = { level: 'account', startDate: date, endDate: date, format: 'json' };
-  if (env.TABOOLA_ACCOUNT_ID) args.accountsIds = [env.TABOOLA_ACCOUNT_ID];
+  // usa o account_id resolvido pela API do Taboola (o secret pode estar em outro formato)
+  if (taboolaAccount) args.accountsIds = [taboolaAccount];
   const t = await withRetry(() => mcp.call('management_taboola_ads', args), 4);
+  if (!ratoeiraTaboolaDay.checked) {
+    ratoeiraTaboolaDay.checked = true;
+    const linked = t.includes(`"accountId": "${taboolaAccount}"`) || t.includes(`"accountId":"${taboolaAccount}"`);
+    console.log(`Conta Taboola do secret vinculada na Ratoeira: ${linked ? 'sim' : 'não — gasto do Taboola virá da API do Taboola e a receita não será atribuída ao Taboola'}`);
+  }
   return {
     tab_spend_brl: pick(t, 'custo_total_valor_real'),
     tab_spend_usd: pick(t, 'custo_total_valor_dolar'),
@@ -294,7 +300,7 @@ async function main() {
     const window = lastDays(HISTORY_DAYS);
     const refresh = new Set(window.slice(-REFRESH_DAYS));
     const need = (d, k) => refresh.has(d) || !prevByDate[d] || !prevByDate[d][k];
-    const KEYS = [hasR && 'ok_r2', hasR && 'ok_rt', hasT && 'ok_tc', hasT && 'ok_tg', hasM && 'ok_m2'].filter(Boolean);
+    const KEYS = [hasR && 'ok_r2', hasR && 'ok_rt2', hasT && 'ok_tc', hasT && 'ok_tg', hasM && 'ok_m2'].filter(Boolean);
     const todo = window.filter((d) => KEYS.some((k) => need(d, k)));
     console.log(`Histórico anterior: ${prev ? Object.keys(prevByDate).length + ' dias' : 'nenhum'}. Atualizando ${todo.length} dia(s).`);
 
@@ -331,13 +337,14 @@ async function main() {
       if (!stopped && mcp && need(date, 'ok_r2')) {
         try { Object.assign(d, await ratoeiraDay(mcp, date)); d.ok_r2 = d.ok_r = true; } catch (e) { d.ok_r2 = false; if (rErr++ < 5) logErr(`ratoeira ${date}`, e.message); }
       }
-      if (!stopped && mcp && need(date, 'ok_rt')) {
-        try { Object.assign(d, await ratoeiraTaboolaDay(mcp, date)); d.ok_rt = true; } catch (e) { d.ok_rt = false; if (rErr++ < 5) logErr(`ratoeira-taboola ${date}`, e.message); }
+      if (!stopped && mcp && need(date, 'ok_rt2')) {
+        try { Object.assign(d, await ratoeiraTaboolaDay(mcp, date)); d.ok_rt = d.ok_rt2 = true; } catch (e) { d.ok_rt2 = false; if (rErr++ < 5) logErr(`ratoeira-taboola ${date}`, e.message); }
       }
       const td = tabDaily[date];
       if (td) {
         d.api_tab_spend = num(td.spent); d.api_tab_clicks = num(td.clicks); d.api_tab_imps = num(td.impressions); d.api_tab_conv = num(td.cpa_actions_num);
-        if (!d.ok_rt) { d.tab_spend_brl = d.api_tab_spend; d.tab_spend_usd = 0; d.tab_clicks = d.api_tab_clicks; d.tab_imps = d.api_tab_imps; }
+        // a API do Taboola é a fonte do gasto; a Ratoeira fica com a receita atribuída
+        if (!d.ok_rt || d.api_tab_spend > 0 || !d.tab_spend_brl) { d.tab_spend_brl = d.api_tab_spend; d.tab_spend_usd = 0; d.tab_clicks = d.api_tab_clicks; d.tab_imps = d.api_tab_imps; }
       }
       if (tabCamps && need(date, 'ok_tc')) { d.tab_camps = tabCamps[date] || []; d.ok_tc = true; }
       if (!stopped && taboolaToken && need(date, 'ok_tg')) {
