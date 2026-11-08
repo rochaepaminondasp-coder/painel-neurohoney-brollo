@@ -38,6 +38,7 @@ jobs:
           MGID_TOKEN: ${{ secrets.MGID_TOKEN }}
           MGID_CURRENCY: USD
           START_DATE: "2026-11-06"   # início da operação; dados anteriores são ignorados
+          DAILY_GOAL: "3000"         # meta de lucro diário em R$
         run: node scripts/fetch.mjs
       - uses: actions/configure-pages@v5
         with:

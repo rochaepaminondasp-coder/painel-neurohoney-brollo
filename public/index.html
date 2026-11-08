@@ -127,6 +127,23 @@ nav.tabs svg { width: 18px; height: 18px; flex: none; }
 .alloc div { display: grid; place-items: center; font-size: 12px; font-weight: 650; color: #fff; min-width: 0; overflow: hidden; white-space: nowrap; }
 .citem { display: grid; grid-template-columns: 12px auto 1fr auto; gap: 10px; align-items: center; padding: 6px 0; font-size: 13px; }
 .citem .sw { width: 12px; height: 12px; border-radius: 3px; }
+/* meta */
+.goalbar { height: 10px; border-radius: 5px; background: var(--surface-2); overflow: hidden; margin: 8px 0 6px; }
+.goalbar div { height: 100%; border-radius: 5px; background: var(--good-fill); }
+.goalhead { display: flex; justify-content: space-between; font-size: 13px; font-weight: 650; margin-top: 14px; }
+/* calendário */
+.cal-wrap { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.cal-days { display: grid; grid-template-rows: 18px repeat(7, 26px); gap: 4px; font-size: 11px; color: var(--muted); }
+.cal-days span { display: flex; align-items: center; }
+.cal { display: grid; grid-auto-flow: column; grid-template-rows: 18px repeat(7, 26px); grid-auto-columns: 26px; gap: 4px; }
+.cal .m { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: visible; }
+.cell { width: 26px; height: 26px; border-radius: 6px; background: var(--surface-2); border: 1px dashed var(--axis); display: grid; place-items: center; font-size: 10px; color: var(--ink-2); position: relative; }
+.cell.has { border: 0; cursor: pointer; color: #fff; font-weight: 650; }
+.cell.has:hover { outline: 2px solid var(--ink); outline-offset: 1px; }
+.cell.future, .cell.blank { background: transparent; border-color: transparent; }
+.cell.goal::after { content: "★"; position: absolute; top: -6px; right: -4px; font-size: 11px; color: var(--accent); }
+.cal-legend { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); margin-top: 10px; }
+.cal-legend .cell { width: 14px; height: 14px; border-radius: 4px; }
 .kpi .value { font-size: 26px; font-weight: 650; margin-top: 4px; letter-spacing: -0.02em; }
 .kpi.small .value { font-size: 20px; }
 .kpi .note { color: var(--muted); font-size: 12px; margin-top: 2px; }
@@ -226,7 +243,7 @@ footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
       <div class="card">
         <h3 id="c-profit-title">Lucro por dia</h3>
         <p class="hint">Faturamento − gasto em anúncios.</p>
-        <div class="legend"><span><i class="dot" style="background:var(--good-fill)"></i>Lucro</span><span><i class="dot" style="background:var(--bad)"></i>Prejuízo</span></div>
+        <div class="legend" id="profit-legend"></div>
         <div class="chartbox"><canvas id="c-profit"></canvas></div>
       </div>
     </div>
@@ -236,6 +253,7 @@ footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
         <div class="legend"><span><i class="line-key"></i>EPC (faturamento ÷ cliques)</span><span><i class="dot" style="background:var(--s2)"></i>CPC</span></div>
         <div class="chartbox"><canvas id="c-epc"></canvas></div></div>
     </div>
+    <div class="card mb"><h3>Calendário de resultados</h3><p class="hint" id="cal-hint">Verde = lucro · vermelho = prejuízo · clique num dia para abrir</p><div id="calendar"></div></div>
   </section>
 
   <!-- PLATAFORMAS -->
@@ -565,6 +583,7 @@ function drawOverview(rows, r) {
   drawInsights(rows, r);
   drawTiles(T, P, hasPrev, prevLabel);
   drawTrendCharts(r);
+  drawCalendar();
 
   // gráfico principal: por hora quando é um dia só e temos dados por hora
   const single = r[0] === r[1], day = single ? state.data.days.find((d) => d.date === r[0]) : null;
@@ -598,7 +617,11 @@ function drawOverview(rows, r) {
   }
   const ctx = contextRows(r);
   $('c-profit-title').textContent = 'Lucro por dia';
-  chart('profit', 'c-profit', { type: 'bar', data: { labels: ctx.map((v) => shortDate(v.date)), datasets: [{ label: 'Lucro', data: ctx.map((v) => (isFinite(v.profit) ? v.profit : null)), backgroundColor: ctx.map((v) => (v.profit >= 0 ? css('--good-fill') : css('--bad'))), borderRadius: 4, borderSkipped: 'start', maxBarThickness: 28 }] }, options: baseOpts() });
+  const g = state.plat === 'all' && state.country === 'all' ? goal() : 0;
+  const pds = [{ type: 'bar', label: 'Lucro', data: ctx.map((v) => (isFinite(v.profit) ? v.profit : null)), backgroundColor: ctx.map((v) => (v.profit >= 0 ? css('--good-fill') : css('--bad'))), borderRadius: 4, borderSkipped: 'start', maxBarThickness: 28, order: 1 }];
+  if (g) pds.push({ type: 'line', label: 'Meta', data: ctx.map(() => g), borderColor: css('--accent'), borderDash: [6, 4], borderWidth: 2, pointRadius: 0, pointHoverRadius: 0, order: 0 });
+  $('profit-legend').innerHTML = `<span><i class="dot" style="background:var(--good-fill)"></i>Lucro</span><span><i class="dot" style="background:var(--bad)"></i>Prejuízo</span>${g ? `<span><i class="line-key" style="background:var(--accent)"></i>Meta ${fmtMoneyS(g)}/dia</span>` : ''}`;
+  chart('profit', 'c-profit', { data: { labels: ctx.map((v) => shortDate(v.date)), datasets: pds }, options: baseOpts() });
 }
 // gráficos diários mostram pelo menos 14 dias para dar contexto
 function contextRows(r) {
@@ -658,7 +681,47 @@ function drawInsights(rows, r) {
   }
   const ca = campaignStats(inRange(r)).rows.filter((x) => x.profit > 0).sort((a, b) => b.profit - a.profit)[0];
   if (ca) h += row('🏆', '--good-fill', 'Melhor campanha', `${esc(ca.name)} · ${ca.net}`, `<span class="pos">${ca.est ? '≈ ' : ''}${fmtMoneyS(ca.profit)}</span>`);
+  // meta de lucro diário
+  const g = goal();
+  if (g && state.plat === 'all' && state.country === 'all') {
+    const T = totals(rows), target = g * days.length, hit = days.filter((v) => v.profit >= g).length, pc = Math.max(0, Math.min(1, target ? T.profit / target : 0));
+    h += `<div class="goalhead"><span>Meta de lucro (${fmtMoneyS(g)}/dia)</span><span class="${T.profit >= target ? 'pos' : ''}">${fmtPct(target ? T.profit / target * 100 : 0, 0)}</span></div><div class="goalbar"><div style="width:${pc * 100}%;background:var(${T.profit >= target ? '--good-fill' : T.profit >= 0 ? '--warn' : '--bad'})"></div></div><div class="note">${hit} de ${days.length} dia${days.length > 1 ? 's' : ''} bateram a meta · alvo do período ${fmtMoneyS(target)} · ${T.profit >= target ? 'meta batida 🎉' : `faltam ${fmtMoneyS(target - T.profit)}`}</div>`;
+  }
   $('insights').innerHTML = h;
+}
+// meta diária (definida em BRL no workflow), na moeda escolhida
+function goal() { const g = state.data.meta.daily_goal_brl; if (!g) return 0; return state.cur === 'BRL' ? g : g / (state.data.days.at(-1)?.fx || 5.5); }
+function drawCalendar() {
+  const days = state.data.days, today = state.data.meta.today;
+  if (!days.length) { $('calendar').innerHTML = '<div class="note">Sem dados.</div>'; return; }
+  const g = goal();
+  const byDate = Object.fromEntries(days.map((d) => [d.date, vals(d)]));
+  // começa na segunda-feira de pelo menos 5 semanas atrás (ou do 1º dia com dados)
+  let start = days[0].date; const min = addDays(today, -34); if (start > min) start = min;
+  const dow = (iso) => (new Date(iso + 'T12:00:00Z').getUTCDay() + 6) % 7;
+  start = addDays(start, -dow(start));
+  const end = addDays(today, 6 - dow(today));
+  const profits = days.map((d) => byDate[d.date].profit).filter((v) => isFinite(v));
+  const maxAbs = Math.max(1, ...profits.map(Math.abs));
+  const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  let html = '', d = start, lastM = -1;
+  while (d <= end) {
+    const m = +d.slice(5, 7) - 1;
+    html += `<div class="m">${m !== lastM ? MONTHS[m] : ''}</div>`; lastM = m;
+    for (let i = 0; i < 7; i++) {
+      const day = addDays(d, i), v = byDate[day];
+      if (day > today) { html += '<div class="cell future"></div>'; continue; }
+      if (!v || !(v.spend || v.rev)) { html += `<div class="cell" title="${longDate(day)} · sem dados">${+day.slice(8)}</div>`; continue; }
+      const p = v.profit, a = 0.35 + 0.65 * Math.min(1, Math.abs(p) / maxAbs);
+      const bg = `color-mix(in srgb, var(${p >= 0 ? '--good-fill' : '--bad'}) ${Math.round(a * 100)}%, var(--surface-2))`;
+      const hit = g && state.plat === 'all' && state.country === 'all' && p >= g;
+      html += `<div class="cell has${hit ? ' goal' : ''}" data-d="${day}" style="background:${bg}" title="${longDate(day)} · ${p >= 0 ? 'lucro' : 'prejuízo'} ${fmtMoneyS(p)} · ROAS ${fmtX(div(v.rev, v.spend))}${hit ? ' · bateu a meta' : ''}">${+day.slice(8)}</div>`;
+    }
+    d = addDays(d, 7);
+  }
+  $('calendar').innerHTML = `<div class="cal-wrap"><div class="cal-days"><span></span><span>seg</span><span>ter</span><span>qua</span><span>qui</span><span>sex</span><span>sáb</span><span>dom</span></div><div class="cal">${html}</div></div>
+    <div class="cal-legend"><span>Prejuízo</span><span class="cell has" style="background:var(--bad)"></span><span class="cell has" style="background:color-mix(in srgb, var(--bad) 40%, var(--surface-2))"></span><span class="cell"></span><span class="cell has" style="background:color-mix(in srgb, var(--good-fill) 40%, var(--surface-2))"></span><span class="cell has" style="background:var(--good-fill)"></span><span>Lucro</span>${g ? `<span style="margin-left:10px;color:var(--accent)">★</span><span>bateu a meta de ${fmtMoneyS(g)}</span>` : ''}<span style="margin-left:10px">tracejado = sem dados</span></div>`;
+  $('calendar').querySelectorAll('.cell[data-d]').forEach((el) => (el.onclick = () => { state.period = 'custom'; state.from = state.to = el.dataset.d; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }));
 }
 function drawTiles(T, P, hasPrev, prevLabel) {
   const R = (X) => ({ ctr: div(X.clicks, X.imps) * 100, cpc: div(X.spend, X.clicks), epc: div(X.rev, X.clicks), cpm: div(X.spend, X.imps) * 1000, ups: div(X.upsRev, X.revAll) * 100, refunds: X.refunds });
@@ -893,6 +956,7 @@ function drawSettings() {
     <dt>Ratoeira Ads</dt><dd>${st(src.ratoeira !== false && !has('ratoeira'), src.ratoeira === false ? 'Sem conexão' : has('ratoeira') ? 'Conectada, com avisos' : 'Conectada')}</dd>
     <dt>Taboola</dt><dd>${st(src.taboola !== false && !has('taboola'), src.taboola === false ? 'Sem conexão' : has('taboola') ? 'Conectado, com avisos' : 'Conectado')}</dd>
     <dt>MGID</dt><dd>${st(!!src.mgid && !has('mgid'), src.mgid ? 'Conectada' : 'Sem acesso — verifique MGID_TOKEN e MGID_CLIENT_ID (ID numérico do painel da MGID)')}</dd>
+    <dt>Meta de lucro diário</dt><dd>${meta.daily_goal_brl ? `R$ ${meta.daily_goal_brl.toLocaleString('pt-BR')} por dia` : 'não definida'} <span class="note">(DAILY_GOAL no workflow)</span></dd>
     <dt>Última atualização</dt><dd>${new Date(meta.updated_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</dd>
     ${meta.start_date ? `<dt>Início da operação</dt><dd>${longDate(meta.start_date)} (dados anteriores são ignorados)</dd>` : ''}
     <dt>Histórico guardado</dt><dd>${days.length} dias (${days[0] ? longDate(days[0].date) : '—'} – ${last ? longDate(last.date) : '—'})${days.filter((d) => d.partial).length ? ` · ${days.filter((d) => d.partial).length} dia(s) incompleto(s), completados nas próximas atualizações` : ''}</dd>

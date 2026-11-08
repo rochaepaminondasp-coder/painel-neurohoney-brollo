@@ -389,7 +389,7 @@ async function main() {
     payload = { days, tab_currency: taboolaCurrency || prev?.tab_currency || 'BRL', mgid_currency: mgidCurrency || prev?.mgid_currency || MGID_CURRENCY, sources: { ratoeira: !!mcp, taboola: !!taboolaToken, mgid: mgidOk } };
   }
 
-  payload.meta = { updated_at: new Date().toISOString(), today, tz: TZ, mgid_currency: MGID_CURRENCY, errors, mock: MOCK, history_days: HISTORY_DAYS, start_date: START_DATE || null };
+  payload.meta = { updated_at: new Date().toISOString(), today, tz: TZ, mgid_currency: MGID_CURRENCY, errors, mock: MOCK, history_days: HISTORY_DAYS, start_date: START_DATE || null, daily_goal_brl: Number(env.DAILY_GOAL || 0) || null };
   await mkdir(OUT, { recursive: true });
   await cp('public', OUT, { recursive: true });
   await writeFile(`${OUT}/data.json`, JSON.stringify(payload));

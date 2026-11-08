@@ -14,7 +14,7 @@ https://rochaepaminondasp-coder.github.io/painel-neurohoney-brollo/
 ## Secrets necessários
 `RATOEIRA_MCP_URL`, `TABOOLA_CLIENT_ID`, `TABOOLA_CLIENT_SECRET`, `TABOOLA_ACCOUNT_ID`, `MGID_CLIENT_ID` (ID numérico mostrado no menu da conta da MGID) e `MGID_TOKEN` (token da API v2).
 
-Opcionais (variáveis de ambiente no workflow): `START_DATE` (início da operação, hoje 2026-11-06), `RATOEIRA_PROJETO_ID`, `MGID_CURRENCY` (padrão USD), `HISTORY_DAYS`, `REFRESH_DAYS`.
+Opcionais (variáveis de ambiente no workflow): `DAILY_GOAL` (meta de lucro diário em R$, hoje 3000), `START_DATE` (início da operação, hoje 2026-11-06), `RATOEIRA_PROJETO_ID`, `MGID_CURRENCY` (padrão USD), `HISTORY_DAYS`, `REFRESH_DAYS`.
 
 ## Testar o layout localmente
 ```bash
