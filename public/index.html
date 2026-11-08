@@ -81,28 +81,13 @@ tfoot td { font-weight: 650; border-bottom: 0; }
 .empty { color: var(--muted); padding: 16px 0; text-align: center; }
 .alert { border: 1px solid var(--border); border-left: 3px solid var(--warn); background: var(--surface); padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; color: var(--ink-2); }
 .alert summary { cursor: pointer; color: var(--ink); }
-#lock { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
-#lock form { width: 100%; max-width: 340px; }
-#lock input { width: 100%; padding: 10px 12px; font: inherit; border: 1px solid var(--axis); border-radius: 8px; background: var(--surface); color: var(--ink); margin: 12px 0 8px; }
-#lock button { width: 100%; padding: 10px; font: inherit; font-weight: 600; border: 0; border-radius: 8px; background: var(--ink); color: var(--page); cursor: pointer; }
-#lock .err { color: var(--bad); font-size: 13px; min-height: 18px; }
 footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
 @media (max-width: 960px) { .kpis { grid-template-columns: repeat(2, minmax(0,1fr)); } .nets, .charts { grid-template-columns: 1fr; } }
 @media (max-width: 520px) { .net dl { grid-template-columns: repeat(2, minmax(0,1fr)); } .kpi .value { font-size: 22px; } }
 </style>
 </head>
 <body>
-<div id="lock">
-  <form class="card" id="lockform">
-    <h1>Painel NeuroHoney <small>· Brollo</small></h1>
-    <div class="sub">Digite a senha do painel para abrir os dados.</div>
-    <input type="password" id="pw" autocomplete="current-password" placeholder="Senha" required>
-    <div class="err" id="pwerr"></div>
-    <button type="submit">Entrar</button>
-  </form>
-</div>
-
-<div class="wrap" id="app" hidden>
+<div class="wrap" id="app">
   <header>
     <div>
       <h1>Painel NeuroHoney <small>· Brollo</small></h1>
@@ -116,8 +101,7 @@ footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
         <button data-c="BRL">R$</button><button data-c="USD">US$</button>
       </div>
       <button class="iconbtn" id="theme" title="Alternar tema">◐</button>
-      <button class="iconbtn" id="logout" title="Sair">Sair</button>
-    </div>
+          </div>
   </header>
 
   <div id="alerts"></div>
@@ -175,33 +159,19 @@ document.getElementById('theme').onclick = () => {
   const t = dark ? 'light' : 'dark'; document.documentElement.dataset.theme = t; store.set('nh.theme', t); if (state.data) render();
 };
 
-// ---------- decifrar ----------
-const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
-async function decrypt(env, pass) {
-  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
-  const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: unb64(env.salt), iterations: env.iter, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
-  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(env.iv) }, key, unb64(env.ct));
-  return JSON.parse(new TextDecoder().decode(pt));
-}
-async function open(pass, silent) {
-  const err = document.getElementById('pwerr');
+// ---------- dados ----------
+async function load() {
   try {
-    const res = await fetch('data.enc.json?t=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) throw new Error('Dados ainda não publicados.');
-    const env = await res.json();
-    state.data = await decrypt(env, pass);
-    store.set('nh.pw', pass);
-    document.getElementById('lock').hidden = true; document.getElementById('app').hidden = false;
+    const res = await fetch('data.json?t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error('Os dados ainda não foram publicados.');
+    state.data = await res.json();
     render();
   } catch (e) {
-    store.del('nh.pw');
-    if (!silent) err.textContent = e.name === 'OperationError' ? 'Senha incorreta.' : (e.message || 'Erro ao abrir os dados.');
+    if (!state.data) document.getElementById('alerts').innerHTML = `<div class="alert">${esc(e.message || 'Erro ao carregar os dados.')}</div>`;
   }
 }
-document.getElementById('lockform').onsubmit = (e) => { e.preventDefault(); document.getElementById('pwerr').textContent = 'Abrindo…'; open(document.getElementById('pw').value); };
-document.getElementById('logout').onclick = () => { store.del('nh.pw'); location.reload(); };
-const saved = store.get('nh.pw'); if (saved) open(saved, true);
-setInterval(() => { const p = store.get('nh.pw'); if (p && state.data) open(p, true); }, 10 * 60 * 1000);
+load();
+setInterval(load, 10 * 60 * 1000);
 
 // ---------- controles ----------
 function bindSeg(id, attr, key, persist) {

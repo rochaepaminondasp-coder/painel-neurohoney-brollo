@@ -30,7 +30,6 @@ jobs:
           node-version: 22
       - name: Coletar dados (Ratoeira, Taboola, MGID)
         env:
-          DASH_PASSWORD: ${{ secrets.DASH_PASSWORD }}
           RATOEIRA_MCP_URL: ${{ secrets.RATOEIRA_MCP_URL }}
           TABOOLA_CLIENT_ID: ${{ secrets.TABOOLA_CLIENT_ID }}
           TABOOLA_CLIENT_SECRET: ${{ secrets.TABOOLA_CLIENT_SECRET }}

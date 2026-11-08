@@ -1,7 +1,6 @@
-// Coleta dados de Ratoeira (MCP), Taboola e MGID, gera _site/data.enc.json (criptografado).
+// Coleta dados de Ratoeira (MCP), Taboola e MGID e gera _site/data.json.
 // Uso: node scripts/fetch.mjs            (produção, lê secrets do ambiente)
 //      node scripts/fetch.mjs --mock     (gera dados fictícios para testar o layout)
-import { webcrypto as crypto } from 'node:crypto';
 import { mkdir, writeFile, cp } from 'node:fs/promises';
 
 const env = process.env;
@@ -37,27 +36,6 @@ async function fetchT(url, opts = {}, ms = 120000) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), ms);
   try { return await fetch(url, { ...opts, signal: ctl.signal }); } finally { clearTimeout(t); }
-}
-
-// ---------- cripto (AES-GCM + PBKDF2), mesmo formato que o index.html decifra ----------
-const b64 = (buf) => Buffer.from(buf).toString('base64');
-const unb64 = (s) => new Uint8Array(Buffer.from(s, 'base64'));
-const ITER = 250000;
-async function deriveKey(pass, salt) {
-  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
-  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: ITER, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
-}
-async function encrypt(obj, pass) {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await deriveKey(pass, salt);
-  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(obj)));
-  return { v: 1, iter: ITER, salt: b64(salt), iv: b64(iv), ct: b64(ct) };
-}
-async function decrypt(env_, pass) {
-  const key = await deriveKey(pass, unb64(env_.salt));
-  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(env_.iv) }, key, unb64(env_.ct));
-  return JSON.parse(new TextDecoder().decode(pt));
 }
 
 // ---------- Ratoeira (cliente MCP mínimo, Streamable HTTP) ----------
@@ -263,11 +241,11 @@ async function mgidLoadNames() {
 const sumMgid = (c) => Object.values(c).reduce((a, r) => ({ spent: a.spent + r.spent, clicks: a.clicks + r.clicks, imps: a.imps + r.imps, conv: a.conv + r.conv }), { spent: 0, clicks: 0, imps: 0, conv: 0 });
 
 // ---------- dados anteriores (incremental) ----------
-async function loadPrevious(pass) {
+async function loadPrevious() {
   try {
-    const res = await fetchT(PAGES_URL + 'data.enc.json?t=' + Date.now(), {}, 30000);
+    const res = await fetchT(PAGES_URL + 'data.json?t=' + Date.now(), {}, 30000);
     if (!res.ok) return null;
-    return await decrypt(await res.json(), pass);
+    return await res.json();
   } catch { return null; }
 }
 
@@ -288,14 +266,12 @@ function mockData() {
 
 // ---------- principal ----------
 async function main() {
-  const pass = env.DASH_PASSWORD;
-  if (!pass) { console.error('Falta o secret DASH_PASSWORD (senha do painel).'); process.exit(1); }
 
   let payload;
   if (MOCK) payload = mockData();
   else {
     const hasR = !!env.RATOEIRA_MCP_URL, hasT = !!(env.TABOOLA_CLIENT_ID && env.TABOOLA_CLIENT_SECRET && env.TABOOLA_ACCOUNT_ID), hasM = !!((env.MGID_CLIENT_ID && env.MGID_TOKEN) || (env.MGID_EMAIL && env.MGID_PASSWORD));
-    const prev = await loadPrevious(pass);
+    const prev = await loadPrevious();
     const prevByDate = Object.fromEntries((prev?.days || []).map((d) => [d.date, d]));
     const window = lastDays(HISTORY_DAYS);
     const refresh = new Set(window.slice(-REFRESH_DAYS));
@@ -362,7 +338,7 @@ async function main() {
   payload.meta = { updated_at: new Date().toISOString(), today, tz: TZ, mgid_currency: MGID_CURRENCY, errors, mock: MOCK };
   await mkdir(OUT, { recursive: true });
   await cp('public', OUT, { recursive: true });
-  await writeFile(`${OUT}/data.enc.json`, JSON.stringify(await encrypt(payload, pass)));
+  await writeFile(`${OUT}/data.json`, JSON.stringify(payload));
   console.log(`OK: ${payload.days.length} dias, ${errors.length} erro(s).`);
 }
 
