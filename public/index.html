@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Painel NeuroHoney</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23eda100'/><path d='M8 22V12l5 6 6-8 5 6v6' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #f3f2ee;
+  --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+  --s1: #2a78d6; --s2: #eb6834; --rev: #0b0b0b;
+  --good: #006300; --good-fill: #0ca30c; --bad: #d03b3b; --warn: #fab219;
+  --accent: #eda100;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232321;
+    --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --s1: #3987e5; --s2: #d95926; --rev: #f0efec;
+    --good: #0ca30c; --good-fill: #0ca30c; --bad: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232321;
+  --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+  --s1: #3987e5; --s2: #d95926; --rev: #f0efec;
+  --good: #0ca30c; --good-fill: #0ca30c; --bad: #e66767;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 20px 16px 48px; }
+header { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+h1 { font-size: 20px; margin: 0; letter-spacing: -0.01em; }
+h1 small { font-weight: 400; color: var(--ink-2); }
+.sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 2px; }
+.seg button { border: 0; background: transparent; color: var(--ink-2); font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--border); }
+.iconbtn { border: 1px solid var(--border); background: var(--surface); color: var(--ink-2); border-radius: 8px; padding: 5px 9px; cursor: pointer; font: inherit; font-size: 13px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.grid { display: grid; gap: 12px; }
+.kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 12px; }
+.kpi .label { color: var(--ink-2); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.kpi .value { font-size: 26px; font-weight: 650; margin-top: 4px; letter-spacing: -0.02em; }
+.kpi .note { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.pos { color: var(--good); } .neg { color: var(--bad); }
+.nets { grid-template-columns: 1fr 1fr; margin-bottom: 12px; }
+.net h2 { font-size: 15px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+.dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.net dl { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px 12px; margin: 0; }
+.net dt { color: var(--muted); font-size: 12px; }
+.net dd { margin: 2px 0 0; font-size: 16px; font-weight: 600; }
+.charts { grid-template-columns: 3fr 2fr; margin-bottom: 12px; }
+.card h3 { font-size: 14px; margin: 0 0 4px; }
+.card .hint { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--ink-2); margin-bottom: 8px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.line-key { width: 14px; height: 2px; background: var(--rev); display: inline-block; }
+.chartbox { position: relative; height: 280px; }
+.tablecard { margin-bottom: 12px; }
+.tablehead { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.tablescroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 7px 8px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; font-variant-numeric: tabular-nums; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; position: sticky; top: 0; background: var(--surface); }
+th:first-child, td:first-child { text-align: left; }
+td.name { max-width: 380px; overflow: hidden; text-overflow: ellipsis; }
+tfoot td { font-weight: 650; border-bottom: 0; }
+.empty { color: var(--muted); padding: 16px 0; text-align: center; }
+.alert { border: 1px solid var(--border); border-left: 3px solid var(--warn); background: var(--surface); padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; color: var(--ink-2); }
+.alert summary { cursor: pointer; color: var(--ink); }
+#lock { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+#lock form { width: 100%; max-width: 340px; }
+#lock input { width: 100%; padding: 10px 12px; font: inherit; border: 1px solid var(--axis); border-radius: 8px; background: var(--surface); color: var(--ink); margin: 12px 0 8px; }
+#lock button { width: 100%; padding: 10px; font: inherit; font-weight: 600; border: 0; border-radius: 8px; background: var(--ink); color: var(--page); cursor: pointer; }
+#lock .err { color: var(--bad); font-size: 13px; min-height: 18px; }
+footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
+@media (max-width: 960px) { .kpis { grid-template-columns: repeat(2, minmax(0,1fr)); } .nets, .charts { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .net dl { grid-template-columns: repeat(2, minmax(0,1fr)); } .kpi .value { font-size: 22px; } }
+</style>
+</head>
+<body>
+<div id="lock">
+  <form class="card" id="lockform">
+    <h1>Painel NeuroHoney <small>· Brollo</small></h1>
+    <div class="sub">Digite a senha do painel para abrir os dados.</div>
+    <input type="password" id="pw" autocomplete="current-password" placeholder="Senha" required>
+    <div class="err" id="pwerr"></div>
+    <button type="submit">Entrar</button>
+  </form>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <header>
+    <div>
+      <h1>Painel NeuroHoney <small>· Brollo</small></h1>
+      <div class="sub" id="updated"></div>
+    </div>
+    <div class="controls">
+      <div class="seg" id="period" role="group" aria-label="Período">
+        <button data-p="today">Hoje</button><button data-p="yesterday">Ontem</button><button data-p="7">7 dias</button><button data-p="14">14 dias</button><button data-p="30">30 dias</button>
+      </div>
+      <div class="seg" id="cur" role="group" aria-label="Moeda">
+        <button data-c="BRL">R$</button><button data-c="USD">US$</button>
+      </div>
+      <button class="iconbtn" id="theme" title="Alternar tema">◐</button>
+      <button class="iconbtn" id="logout" title="Sair">Sair</button>
+    </div>
+  </header>
+
+  <div id="alerts"></div>
+
+  <section class="grid kpis" id="kpis"></section>
+
+  <section class="grid nets">
+    <div class="card net" id="net-taboola"></div>
+    <div class="card net" id="net-mgid"></div>
+  </section>
+
+  <section class="grid charts">
+    <div class="card">
+      <h3>Faturamento × gasto por dia</h3>
+      <p class="hint">Barras empilhadas: gasto por rede. Linha: faturamento total.</p>
+      <div class="legend"><span><i class="dot" style="background:var(--s1)"></i>Gasto Taboola</span><span><i class="dot" style="background:var(--s2)"></i>Gasto MGID</span><span><i class="line-key"></i>Faturamento</span></div>
+      <div class="chartbox"><canvas id="c-daily" aria-label="Faturamento e gasto por dia"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>Lucro por dia</h3>
+      <p class="hint">Faturamento − gasto das duas redes.</p>
+      <div class="legend"><span><i class="dot" style="background:var(--good-fill)"></i>Lucro</span><span><i class="dot" style="background:var(--bad)"></i>Prejuízo</span></div>
+      <div class="chartbox"><canvas id="c-profit" aria-label="Lucro por dia"></canvas></div>
+    </div>
+  </section>
+
+  <section class="card tablecard">
+    <div class="tablehead">
+      <h3>Campanhas</h3>
+      <div class="controls">
+        <div class="seg" id="cnet" role="group" aria-label="Rede"><button data-n="taboola">Taboola</button><button data-n="mgid">MGID</button></div>
+        <div class="seg" id="crange" role="group" aria-label="Janela"><button data-r="d1">Hoje</button><button data-r="d7">7 dias</button></div>
+      </div>
+    </div>
+    <div class="tablescroll"><table id="t-camp"></table></div>
+  </section>
+
+  <section class="card tablecard">
+    <div class="tablehead"><h3>Resumo diário</h3></div>
+    <div class="tablescroll"><table id="t-days"></table></div>
+  </section>
+
+  <footer>Fontes: Ratoeira Ads (vendas e receita atribuída ao Taboola), API Taboola e API MGID. Receita MGID = faturamento total − receita atribuída ao Taboola (inclui vendas não atribuídas). Câmbio do dia calculado a partir da Ratoeira.</footer>
+</div>
+
+<script>
+const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} }, del(k) { try { localStorage.removeItem(k); } catch {} } };
+const state = { period: store.get('nh.period') || '7', cur: store.get('nh.cur') || 'BRL', cnet: 'taboola', crange: 'd7', data: null };
+const charts = {};
+
+// ---------- tema ----------
+const savedTheme = store.get('nh.theme'); if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+document.getElementById('theme').onclick = () => {
+  const dark = getComputedStyle(document.documentElement).colorScheme.includes('dark');
+  const t = dark ? 'light' : 'dark'; document.documentElement.dataset.theme = t; store.set('nh.theme', t); if (state.data) render();
+};
+
+// ---------- decifrar ----------
+const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+async function decrypt(env, pass) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: unb64(env.salt), iterations: env.iter, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(env.iv) }, key, unb64(env.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+async function open(pass, silent) {
+  const err = document.getElementById('pwerr');
+  try {
+    const res = await fetch('data.enc.json?t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error('Dados ainda não publicados.');
+    const env = await res.json();
+    state.data = await decrypt(env, pass);
+    store.set('nh.pw', pass);
+    document.getElementById('lock').hidden = true; document.getElementById('app').hidden = false;
+    render();
+  } catch (e) {
+    store.del('nh.pw');
+    if (!silent) err.textContent = e.name === 'OperationError' ? 'Senha incorreta.' : (e.message || 'Erro ao abrir os dados.');
+  }
+}
+document.getElementById('lockform').onsubmit = (e) => { e.preventDefault(); document.getElementById('pwerr').textContent = 'Abrindo…'; open(document.getElementById('pw').value); };
+document.getElementById('logout').onclick = () => { store.del('nh.pw'); location.reload(); };
+const saved = store.get('nh.pw'); if (saved) open(saved, true);
+setInterval(() => { const p = store.get('nh.pw'); if (p && state.data) open(p, true); }, 10 * 60 * 1000);
+
+// ---------- controles ----------
+function bindSeg(id, attr, key, persist) {
+  const el = document.getElementById(id);
+  el.querySelectorAll('button').forEach((b) => b.onclick = () => { state[key] = b.dataset[attr]; if (persist) store.set(persist, state[key]); render(); });
+}
+bindSeg('period', 'p', 'period', 'nh.period'); bindSeg('cur', 'c', 'cur', 'nh.cur'); bindSeg('cnet', 'n', 'cnet'); bindSeg('crange', 'r', 'crange');
+function syncSeg(id, attr, val) { document.querySelectorAll(`#${id} button`).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset[attr] === val))); }
+
+// ---------- formatação ----------
+const fmtMoney = (v) => (state.cur === 'BRL' ? 'R$ ' : 'US$ ') + (Math.abs(v) >= 100000 ? (v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mil' : v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+const fmtMoneyS = (v) => (state.cur === 'BRL' ? 'R$ ' : 'US$ ') + v.toLocaleString('pt-BR', { minimumFractionDigits: Math.abs(v) < 10 ? 2 : 0, maximumFractionDigits: Math.abs(v) < 10 ? 2 : 0 });
+const fmtInt = (v) => Math.round(v).toLocaleString('pt-BR');
+const fmtX = (v) => isFinite(v) ? v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '×' : '—';
+const fmtPct = (v) => isFinite(v) ? v.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%' : '—';
+const div = (a, b) => (b ? a / b : NaN);
+const dash = (v, f) => (isFinite(v) ? f(v) : '—');
+const shortDate = (iso) => iso.slice(8, 10) + '/' + iso.slice(5, 7);
+
+// converte valores do dia para a moeda escolhida
+function conv(d) {
+  const fx = d.fx || 5.5, mgUsd = state.data.meta.mgid_currency === 'BRL' ? (d.mgid_spend || 0) / fx : (d.mgid_spend || 0);
+  const k = state.cur === 'BRL' ? fx : 1;
+  const tabSpendUsd = d.tab_spend_usd || (d.tab_spend_brl || 0) / fx;
+  const rev = (d.revenue_usd || 0) * k, tabRev = (d.tab_rev_usd || 0) * k;
+  const tab = tabSpendUsd * k, mg = mgUsd * k;
+  return { date: d.date, rev, tabRev, mgRev: Math.max(0, rev - tabRev), tab, mg, spend: tab + mg, profit: rev - tab - mg,
+    sales: d.sales || 0, front: d.sales_front || 0, ups: d.upsells || 0, refunds: (d.refunds_usd || 0) * k,
+    tabSales: d.tab_sales || 0, tabClicks: d.tab_clicks || 0, tabImps: d.tab_imps || 0, tabCheckouts: d.tab_checkouts || 0,
+    mgClicks: d.mgid_clicks || 0, mgImps: d.mgid_imps || 0, mgConv: d.mgid_conv || 0, partial: d.partial };
+}
+function periodDays() {
+  const days = state.data.days; const today = state.data.meta.today;
+  if (state.period === 'today') return days.filter((d) => d.date === today);
+  if (state.period === 'yesterday') { const y = days.filter((d) => d.date < today).at(-1); return y ? [y] : []; }
+  return days.slice(-Number(state.period));
+}
+const sum = (rows, k) => rows.reduce((a, r) => a + (r[k] || 0), 0);
+
+function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+// ---------- render ----------
+function render() {
+  syncSeg('period', 'p', state.period); syncSeg('cur', 'c', state.cur); syncSeg('cnet', 'n', state.cnet); syncSeg('crange', 'r', state.crange);
+  const meta = state.data.meta;
+  document.getElementById('updated').textContent = `Atualizado em ${new Date(meta.updated_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' })} (horário de Brasília)` + (meta.mock ? ' · DADOS FICTÍCIOS' : '');
+
+  const al = document.getElementById('alerts');
+  al.innerHTML = meta.errors?.length ? `<details class="alert"><summary>⚠ ${meta.errors.length} fonte(s) com falha na última atualização. Os números podem estar incompletos.</summary><ul>${meta.errors.map((e) => `<li><b>${esc(e.src)}</b>: ${esc(e.msg)}</li>`).join('')}</ul></details>` : '';
+
+  const rows = periodDays().map(conv);
+  const T = Object.fromEntries(['rev', 'tabRev', 'mgRev', 'tab', 'mg', 'spend', 'profit', 'sales', 'front', 'ups', 'refunds', 'tabSales', 'tabClicks', 'tabImps', 'tabCheckouts', 'mgClicks', 'mgImps', 'mgConv'].map((k) => [k, sum(rows, k)]));
+
+  const kpi = (label, value, note, cls = '') => `<div class="card kpi"><div class="label">${label}</div><div class="value ${cls}">${value}</div><div class="note">${note}</div></div>`;
+  document.getElementById('kpis').innerHTML =
+    kpi('Faturamento', fmtMoney(T.rev), `${fmtInt(T.sales)} vendas · ticket ${dash(div(T.rev, T.front), fmtMoneyS)}`) +
+    kpi('Gasto em anúncios', fmtMoney(T.spend), `Taboola ${fmtMoneyS(T.tab)} · MGID ${fmtMoneyS(T.mg)}`) +
+    kpi('Lucro', fmtMoney(T.profit), `ROI ${fmtPct(div(T.profit, T.spend) * 100)} · margem ${fmtPct(div(T.profit, T.rev) * 100)}`, T.profit >= 0 ? 'pos' : 'neg') +
+    kpi('ROAS', fmtX(div(T.rev, T.spend)), `CPA ${dash(div(T.spend, T.front), fmtMoneyS)} · ${fmtInt(T.front)} front + ${fmtInt(T.ups)} upsell`);
+
+  const net = (name, color, spend, rev, sales, clicks, imps, extra) => `
+    <h2><i class="dot" style="background:var(${color})"></i>${name}</h2>
+    <dl>
+      <div><dt>Gasto</dt><dd>${fmtMoneyS(spend)}</dd></div>
+      <div><dt>Receita${name === 'MGID' ? ' (est.)' : ''}</dt><dd>${fmtMoneyS(rev)}</dd></div>
+      <div><dt>ROAS</dt><dd>${fmtX(div(rev, spend))}</dd></div>
+      <div><dt>Lucro</dt><dd class="${rev - spend >= 0 ? 'pos' : 'neg'}">${fmtMoneyS(rev - spend)}</dd></div>
+      <div><dt>Cliques</dt><dd>${fmtInt(clicks)}</dd></div>
+      <div><dt>CPC</dt><dd>${dash(div(spend, clicks), (v) => fmtMoney(v))}</dd></div>
+      <div><dt>CTR</dt><dd>${dash(div(clicks, imps) * 100, (v) => v.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + '%')}</dd></div>
+      ${extra}
+    </dl>`;
+  document.getElementById('net-taboola').innerHTML = net('Taboola', '--s1', T.tab, T.tabRev, T.tabSales, T.tabClicks, T.tabImps, `<div><dt>Vendas · CPA</dt><dd>${fmtInt(T.tabSales)} · ${dash(div(T.tab, T.tabSales), fmtMoneyS)}</dd></div>`);
+  document.getElementById('net-mgid').innerHTML = net('MGID', '--s2', T.mg, T.mgRev, 0, T.mgClicks, T.mgImps, `<div><dt>Conversões MGID</dt><dd>${fmtInt(T.mgConv)}</dd></div>`);
+
+  drawCharts();
+  drawCampaigns();
+  drawDays();
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+function drawCharts() {
+  // gráficos sempre mostram pelo menos 14 dias para dar contexto
+  const n = ['today', 'yesterday', '7'].includes(state.period) ? 14 : Number(state.period);
+  const rows = state.data.days.slice(-n).map(conv);
+  const labels = rows.map((r) => shortDate(r.date));
+  const ink2 = css('--ink-2'), muted = css('--muted'), grid = css('--grid'), axis = css('--axis'), surface = css('--surface');
+  Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+  Chart.defaults.color = muted;
+  const tooltip = { backgroundColor: surface, titleColor: css('--ink'), bodyColor: ink2, borderColor: axis, borderWidth: 1, padding: 10, boxPadding: 4, usePointStyle: true,
+    callbacks: { label: (c) => ` ${c.dataset.label}: ${fmtMoneyS(c.parsed.y)}` } };
+  const scales = (stacked) => ({
+    x: { stacked, grid: { display: false }, border: { color: axis }, ticks: { maxRotation: 0, autoSkipPadding: 8 } },
+    y: { stacked, grid: { color: grid }, border: { display: false }, ticks: { callback: (v) => (Math.abs(v) >= 1000 ? (v / 1000).toLocaleString('pt-BR') + 'k' : v) } },
+  });
+  const bar = { borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: 'bottom', borderWidth: { top: 2 }, borderColor: surface, maxBarThickness: 28 };
+
+  charts.daily?.destroy();
+  charts.daily = new Chart(document.getElementById('c-daily'), {
+    data: { labels, datasets: [
+      { type: 'line', stack: 'rev', label: 'Faturamento', data: rows.map((r) => r.rev), borderColor: css('--rev'), backgroundColor: css('--rev'), borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, tension: 0.25, order: 0 },
+      { type: 'bar', label: 'Gasto Taboola', data: rows.map((r) => r.tab), backgroundColor: css('--s1'), ...bar, borderRadius: 0, borderWidth: 0, stack: 's', order: 1 },
+      { type: 'bar', label: 'Gasto MGID', data: rows.map((r) => r.mg), backgroundColor: css('--s2'), ...bar, borderWidth: { bottom: 2 }, borderSkipped: false, stack: 's', order: 1 },
+    ] },
+    options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { ...tooltip, callbacks: { ...tooltip.callbacks, footer: (items) => { const r = rows[items[0].dataIndex]; return `Lucro: ${fmtMoneyS(r.profit)} · ROAS ${fmtX(div(r.rev, r.spend))}`; } } } }, scales: { x: scales(true).x, y: { ...scales(true).y, beginAtZero: true } } },
+  });
+
+  charts.profit?.destroy();
+  charts.profit = new Chart(document.getElementById('c-profit'), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Lucro', data: rows.map((r) => r.profit), backgroundColor: rows.map((r) => (r.profit >= 0 ? css('--good-fill') : css('--bad'))), borderRadius: 4, borderSkipped: 'start', maxBarThickness: 28 }] },
+    options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip }, scales: scales(false) },
+  });
+}
+
+function drawCampaigns() {
+  const t = document.getElementById('t-camp');
+  const list = state.data.campaigns?.[state.crange]?.[state.cnet];
+  if (!list || !list.length) { t.innerHTML = `<tbody><tr><td class="empty" colspan="7">Sem dados de campanha para essa rede/janela.</td></tr></tbody>`; return; }
+  const fx = state.data.days.at(-1)?.fx || 5.5;
+  const srcCur = state.cnet === 'mgid' ? state.data.meta.mgid_currency : (list[0].currency || 'BRL');
+  const k = srcCur === state.cur ? 1 : state.cur === 'BRL' ? fx : 1 / fx;
+  const rows = list.map((r) => ({ ...r, spend: r.spend * k }));
+  const tot = { spend: sum(rows, 'spend'), clicks: sum(rows, 'clicks'), imps: sum(rows, 'imps'), conv: sum(rows, 'conv') };
+  const tr = (r, tag = 'td') => `<tr><${tag} class="name" title="${esc(r.name)}">${esc(r.name)}</${tag}><td>${fmtMoneyS(r.spend)}</td><td>${fmtInt(r.clicks)}</td><td>${dash(div(r.spend, r.clicks), fmtMoney)}</td><td>${dash(div(r.clicks, r.imps) * 100, (v) => v.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + '%')}</td><td>${fmtInt(r.conv)}</td><td>${dash(div(r.spend, r.conv), fmtMoneyS)}</td></tr>`;
+  t.innerHTML = `<thead><tr><th>Campanha</th><th>Gasto</th><th>Cliques</th><th>CPC</th><th>CTR</th><th>Conv. (rede)</th><th>CPA (rede)</th></tr></thead><tbody>${rows.map((r) => tr(r)).join('')}</tbody><tfoot>${tr({ name: `Total (${rows.length})`, ...tot })}</tfoot>`;
+}
+
+function drawDays() {
+  const rows = state.data.days.slice().reverse().map(conv);
+  const t = document.getElementById('t-days');
+  t.innerHTML = `<thead><tr><th>Dia</th><th>Faturamento</th><th>Gasto Taboola</th><th>Gasto MGID</th><th>Lucro</th><th>ROAS</th><th>Vendas</th><th>Front</th><th>Upsell</th><th>CPA</th></tr></thead><tbody>${rows.map((r) =>
+    `<tr><td>${shortDate(r.date)}${r.partial ? ' <span title="Alguma fonte falhou neste dia">⚠</span>' : ''}</td><td>${fmtMoneyS(r.rev)}</td><td>${fmtMoneyS(r.tab)}</td><td>${fmtMoneyS(r.mg)}</td><td class="${r.profit >= 0 ? 'pos' : 'neg'}">${fmtMoneyS(r.profit)}</td><td>${fmtX(div(r.rev, r.spend))}</td><td>${fmtInt(r.sales)}</td><td>${fmtInt(r.front)}</td><td>${fmtInt(r.ups)}</td><td>${dash(div(r.spend, r.front), fmtMoneyS)}</td></tr>`).join('')}</tbody>`;
+}
+</script>
+</body>
+</html>

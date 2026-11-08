@@ -1,0 +1,49 @@
+name: Atualizar painel
+
+on:
+  schedule:
+    - cron: '7,37 * * * *'   # a cada 30 min
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Coletar dados (Ratoeira, Taboola, MGID)
+        env:
+          DASH_PASSWORD: ${{ secrets.DASH_PASSWORD }}
+          RATOEIRA_MCP_URL: ${{ secrets.RATOEIRA_MCP_URL }}
+          TABOOLA_CLIENT_ID: ${{ secrets.TABOOLA_CLIENT_ID }}
+          TABOOLA_CLIENT_SECRET: ${{ secrets.TABOOLA_CLIENT_SECRET }}
+          TABOOLA_ACCOUNT_ID: ${{ secrets.TABOOLA_ACCOUNT_ID }}
+          MGID_CLIENT_ID: ${{ secrets.MGID_CLIENT_ID }}
+          MGID_TOKEN: ${{ secrets.MGID_TOKEN }}
+          MGID_CURRENCY: USD
+        run: node scripts/fetch.mjs
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4
