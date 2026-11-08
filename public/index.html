@@ -89,6 +89,44 @@ nav.tabs svg { width: 18px; height: 18px; flex: none; }
 .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 8px; background: var(--surface-2); color: var(--ink-2); white-space: nowrap; }
 .pill.up { color: var(--good); background: color-mix(in srgb, var(--good-fill) 14%, transparent); }
 .pill.down { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); }
+/* funil */
+.fstage { display: grid; grid-template-columns: 150px 1fr 120px; gap: 12px; align-items: center; }
+.fstage .fl b { display: block; font-size: 14px; } .fstage .fl span { color: var(--muted); font-size: 12px; }
+.fbar { height: 34px; border-radius: 8px; display: flex; align-items: center; padding: 0 12px; color: #fff; font-weight: 650; font-variant-numeric: tabular-nums; min-width: 48px; }
+.fcost { text-align: right; } .fcost b { display: block; font-variant-numeric: tabular-nums; } .fcost span { color: var(--muted); font-size: 12px; }
+.fconn { display: grid; grid-template-columns: 150px 1fr 120px; gap: 12px; margin: 6px 0; }
+.fconn .chip { justify-self: start; font-size: 12px; color: var(--ink-2); background: var(--surface-2); border-radius: 999px; padding: 3px 10px; }
+/* resumo */
+.ins-row { display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--grid); }
+.ins-row:last-child { border-bottom: 0; }
+.ins-row .ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-size: 16px; }
+.ins-row b { display: block; font-size: 14px; } .ins-row span.s { color: var(--muted); font-size: 12px; }
+.ins-row .r { font-weight: 650; font-variant-numeric: tabular-nums; text-align: right; }
+/* métricas de tráfego */
+.tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+.tile { background: var(--surface-2); border-radius: 12px; padding: 12px; min-width: 0; }
+.tile small { color: var(--ink-2); font-size: 12px; display: block; }
+.tile .tv { font-size: 20px; font-weight: 650; margin: 4px 0 6px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* sugestões */
+.tag2 { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 650; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.tag2.scale { color: var(--good); background: color-mix(in srgb, var(--good-fill) 16%, transparent); }
+.tag2.good { color: var(--good); background: color-mix(in srgb, var(--good-fill) 10%, transparent); }
+.tag2.warn { color: var(--accent); background: color-mix(in srgb, var(--warn) 18%, transparent); }
+.tag2.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); }
+.tag2.neutral { color: var(--ink-2); background: var(--surface-2); }
+.sug { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); margin-bottom: 8px; align-items: center; }
+.sug b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+.sug .why { color: var(--muted); font-size: 12px; grid-column: 1 / -1; }
+.sug .num { font-weight: 650; font-variant-numeric: tabular-nums; }
+.best { display: flex; gap: 16px; align-items: flex-start; }
+.best .trophy { font-size: 34px; line-height: 1; }
+.bstats { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px 16px; margin-top: 12px; }
+.bstats small { color: var(--muted); font-size: 12px; display: block; } .bstats b { font-variant-numeric: tabular-nums; }
+/* verba por país */
+.alloc { display: flex; height: 34px; border-radius: 10px; overflow: hidden; margin: 12px 0; gap: 2px; }
+.alloc div { display: grid; place-items: center; font-size: 12px; font-weight: 650; color: #fff; min-width: 0; overflow: hidden; white-space: nowrap; }
+.citem { display: grid; grid-template-columns: 12px auto 1fr auto; gap: 10px; align-items: center; padding: 6px 0; font-size: 13px; }
+.citem .sw { width: 12px; height: 12px; border-radius: 3px; }
 .kpi .value { font-size: 26px; font-weight: 650; margin-top: 4px; letter-spacing: -0.02em; }
 .kpi.small .value { font-size: 20px; }
 .kpi .note { color: var(--muted); font-size: 12px; margin-top: 2px; }
@@ -132,8 +170,8 @@ tfoot td { font-weight: 650; border-bottom: 0; }
 .settings dd { margin: 0; }
 .settings ul { margin: 6px 0 0; padding-left: 18px; color: var(--ink-2); }
 footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
-@media (max-width: 960px) { .k4 { grid-template-columns: repeat(2, minmax(0,1fr)); } .k2, .c32 { grid-template-columns: 1fr; } .settings dl { grid-template-columns: 1fr; gap: 4px; } .settings dd { margin-bottom: 10px; } }
-@media (max-width: 520px) { .mval { font-size: 19px; margin: 10px 0 8px; } .mcard { padding: 12px; } .mhead { font-size: 13px; } .ico { width: 28px; height: 28px; } .pill { font-size: 12px; padding: 3px 8px; } .net dl { grid-template-columns: repeat(2, minmax(0,1fr)); } .kpi .value { font-size: 22px; } .search { min-width: 0; width: 100%; } .dd { flex: 1 1 100%; } .dd select { width: 100%; } }
+@media (max-width: 960px) { .tiles { grid-template-columns: repeat(3, minmax(0,1fr)); } .k4 { grid-template-columns: repeat(2, minmax(0,1fr)); } .k2, .c32 { grid-template-columns: 1fr; } .settings dl { grid-template-columns: 1fr; gap: 4px; } .settings dd { margin-bottom: 10px; } }
+@media (max-width: 520px) { .tiles { grid-template-columns: repeat(2, minmax(0,1fr)); } .fstage, .fconn { grid-template-columns: 92px 1fr 78px; gap: 8px; } .fstage .fl b { font-size: 12px; } .fbar { height: 28px; padding: 0 8px; font-size: 12px; } .bstats { grid-template-columns: repeat(2, minmax(0,1fr)); } .mval { font-size: 19px; margin: 10px 0 8px; } .mcard { padding: 12px; } .mhead { font-size: 13px; } .ico { width: 28px; height: 28px; } .pill { font-size: 12px; padding: 3px 8px; } .net dl { grid-template-columns: repeat(2, minmax(0,1fr)); } .kpi .value { font-size: 22px; } .search { min-width: 0; width: 100%; } .dd { flex: 1 1 100%; } .dd select { width: 100%; } }
 </style>
 </head>
 <body>
@@ -174,6 +212,11 @@ footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
     <div class="grid k4 mb" id="kpis2"></div>
     <div class="grid k4 mb" id="kpis3"></div>
     <div class="grid c32 mb">
+      <div class="card"><h3>Funil do native</h3><p class="hint">Do anúncio até a venda · custo de cada etapa à direita</p><div id="funnel"></div></div>
+      <div class="card"><h3>Resumo do período</h3><p class="hint" id="ins-sub"></p><div id="insights"></div></div>
+    </div>
+    <div class="card mb"><h3>Métricas de tráfego</h3><p class="hint">Comparadas com o período anterior de mesmo tamanho</p><div class="tiles" id="tiles"></div></div>
+    <div class="grid c32 mb">
       <div class="card">
         <h3 id="c-main-title">Faturamento × gasto</h3>
         <p class="hint" id="c-main-hint"></p>
@@ -186,6 +229,12 @@ footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
         <div class="legend"><span><i class="dot" style="background:var(--good-fill)"></i>Lucro</span><span><i class="dot" style="background:var(--bad)"></i>Prejuízo</span></div>
         <div class="chartbox"><canvas id="c-profit"></canvas></div>
       </div>
+    </div>
+    <div class="grid k2 mb">
+      <div class="card"><h3>Lucro acumulado</h3><p class="hint">Como o caixa da operação evolui dia a dia</p><div class="chartbox"><canvas id="c-cum"></canvas></div></div>
+      <div class="card"><h3>EPC × CPC</h3><p class="hint">Quando o EPC fica acima do CPC, cada clique está dando lucro</p>
+        <div class="legend"><span><i class="line-key"></i>EPC (faturamento ÷ cliques)</span><span><i class="dot" style="background:var(--s2)"></i>CPC</span></div>
+        <div class="chartbox"><canvas id="c-epc"></canvas></div></div>
     </div>
   </section>
 
@@ -209,6 +258,11 @@ footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
 
   <!-- CAMPANHAS -->
   <section data-panel="campanhas" hidden>
+    <div class="grid k2 mb">
+      <div class="card" id="camp-best"></div>
+      <div class="card"><h3>🚀 Escalar</h3><p class="hint">ROAS ≥ 1,5 com vendas no período</p><div id="sug-scale"></div></div>
+    </div>
+    <div class="card mb"><h3>⚠ Pausar ou otimizar</h3><p class="hint" id="sug-bad-hint">Campanhas queimando verba</p><div id="sug-bad"></div></div>
     <div class="card mb">
       <div class="tablehead">
         <div><h3>Campanhas</h3><div class="note" id="camp-note"></div></div>
@@ -220,6 +274,7 @@ footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
 
   <!-- PAÍSES -->
   <section data-panel="paises" hidden>
+    <div class="card mb"><h3>Onde colocar a verba</h3><p class="hint">Distribuição sugerida com base no lucro de cada país no período. É um ponto de partida, não uma regra.</p><div id="alloc"></div></div>
     <div class="grid c32 mb">
       <div class="card">
         <h3>Faturamento por país</h3>
@@ -397,7 +452,9 @@ function vals(d) {
     v.ic = NaN;
     const tc = d.tab_ctry?.[c] || [0, 0], mc = d.mgid_ctry?.[c] || [0, 0];
     v.clicks = state.plat === 'mgid' ? mc[1] : state.plat === 'taboola' ? tc[1] : tc[1] + mc[1];
+    v.imps = state.plat === 'mgid' ? (mc[2] || 0) : state.plat === 'taboola' ? (tc[2] || 0) : (tc[2] || 0) + (mc[2] || 0);
   } else {
+    v.imps = state.plat === 'mgid' ? v.mgImps : state.plat === 'taboola' ? v.tabImps : v.tabImps + v.mgImps;
     v.ic = state.plat === 'taboola' ? v.icTab : state.plat === 'mgid' ? v.icMg : n(d.ic);
     v.clicks = state.plat === 'mgid' ? v.mgClicks : state.plat === 'taboola' ? v.tabClicks : v.tabClicks + v.mgClicks;
   }
@@ -438,7 +495,7 @@ function render() {
 const kpi = (label, value, note, cls = '', small = false) => `<div class="card kpi${small ? ' small' : ''}"><div class="label">${label}</div><div class="value ${cls}">${value}</div><div class="note">${note}</div></div>`;
 
 function totals(rows) {
-  const T = {}; for (const k of ['rev', 'spend', 'profit', 'sales', 'front', 'ups', 'tab', 'mg', 'tabRev', 'mgRev', 'revAll', 'refunds', 'upsRev', 'tabC', 'ic', 'icTab', 'icMg', 'clicks']) T[k] = sumN(rows, k);
+  const T = {}; for (const k of ['rev', 'spend', 'profit', 'sales', 'front', 'ups', 'tab', 'mg', 'tabRev', 'mgRev', 'revAll', 'refunds', 'upsRev', 'tabC', 'ic', 'icTab', 'icMg', 'clicks', 'imps']) T[k] = sumN(rows, k);
   return T;
 }
 
@@ -504,6 +561,10 @@ function drawOverview(rows, r) {
     card('ckr', 'Conversão do checkout', (v) => fmtPct(v), { points: true, extra: noIc || 'vendas front ÷ checkouts' }) +
     card('cpi', 'Custo por checkout', money, { lowerIsBetter: true, extra: noIc }) +
     card('icr', 'Checkout por clique', (v) => fmtPct(v, 2), { points: true, extra: noIc || `${fmtInt(T.clicks)} cliques` });
+  drawFunnel(T);
+  drawInsights(rows, r);
+  drawTiles(T, P, hasPrev, prevLabel);
+  drawTrendCharts(r);
 
   // gráfico principal: por hora quando é um dia só e temos dados por hora
   const single = r[0] === r[1], day = single ? state.data.days.find((d) => d.date === r[0]) : null;
@@ -557,13 +618,94 @@ function baseOpts(cb = {}) {
 }
 function chart(key, id, cfg) { charts[key]?.destroy(); charts[key] = new Chart($(id), cfg); }
 
+// ---------- funil, resumo, métricas de tráfego ----------
+function drawFunnel(T) {
+  const front = isFinite(T.front) ? T.front : T.sales;
+  const st = [
+    { k: 'imps', l: 'Impressões', v: T.imps, col: '--muted', cost: T.imps ? [fmtMoney(T.spend / T.imps * 1000), 'CPM'] : null },
+    { k: 'clicks', l: 'Cliques', v: T.clicks, col: '--s1', cost: T.clicks ? [fmtMoney(T.spend / T.clicks), 'CPC'] : null },
+    { k: 'ic', l: 'Initiate checkout', v: T.ic, col: '--warn', cost: T.ic ? [fmtMoney(T.spend / T.ic), 'por checkout'] : null },
+    { k: 'sales', l: 'Vendas front', v: front, col: '--good-fill', cost: front ? [fmtMoney(T.spend / front), 'CPA'] : null, sub: `${fmtMoneyS(T.rev)} faturados${isFinite(T.ups) && T.ups ? ` · ${fmtInt(T.ups)} upsell${T.ups > 1 ? 's' : ''}` : ''}` },
+  ].filter((x) => isFinite(x.v));
+  const mx = Math.max(...st.map((x) => x.v), 1);
+  if (!st.some((x) => x.v > 0)) { $('funnel').innerHTML = '<div class="note">Sem dados no período.</div>'; return; }
+  const LBL = { 'imps>clicks': 'CTR', 'clicks>ic': 'Clique → checkout', 'ic>sales': 'Conversão do checkout', 'clicks>sales': 'Conversão' };
+  $('funnel').innerHTML = st.map((x, i) => {
+    const w = x.v > 0 ? 14 + 86 * (Math.log10(x.v + 1) / Math.log10(mx + 1)) : 0;
+    const prev = st[i - 1];
+    const conn = prev ? `<div class="fconn"><span></span><span class="chip">↓ ${LBL[prev.k + '>' + x.k] || 'Conversão'} <b>${prev.v ? fmtPct(x.v / prev.v * 100, 2) : '—'}</b></span><span></span></div>` : '';
+    return conn + `<div class="fstage"><div class="fl"><b>${x.l}</b><span>${x.sub || ''}</span></div><div><div class="fbar" style="width:${w}%;background:var(${x.col})">${x.v > 0 ? fmtInt(x.v) : '—'}</div></div><div class="fcost">${x.cost ? `<b>${x.cost[0]}</b><span>${x.cost[1]}</span>` : '<span>—</span>'}</div></div>`;
+  }).join('') + (!isFinite(T.ic) ? `<div class="note" style="margin-top:10px">${state.country !== 'all' ? 'Initiate checkout não tem quebra por país.' : 'Initiate checkouts aparecem após a próxima atualização.'}</div>` : '');
+}
+function drawInsights(rows, r) {
+  $('ins-sub').textContent = (r[0] === r[1] ? longDate(r[0]) : `${shortDate(r[0])} a ${shortDate(r[1])}`) + (state.plat !== 'all' ? ' · ' + (state.plat === 'mgid' ? 'MGID' : 'Taboola') : '') + (state.country !== 'all' ? ' · ' + cname(state.country) : '');
+  const days = rows.filter((v) => isFinite(v.profit) && (v.spend || v.rev));
+  if (!days.length) { $('insights').innerHTML = '<div class="note">Nenhum dia com dados neste período.</div>'; return; }
+  const row = (ic, col, title, sub, right) => `<div class="ins-row"><span class="ic" style="background:color-mix(in srgb, var(${col}) 16%, transparent);color:var(${col})">${ic}</span><div><b>${title}</b><span class="s">${sub}</span></div><div class="r">${right}</div></div>`;
+  const win = days.filter((v) => v.profit >= 0).length, lose = days.length - win;
+  const best = days.reduce((a, b) => (b.profit > a.profit ? b : a)), worst = days.reduce((a, b) => (b.profit < a.profit ? b : a));
+  let h = row('📅', '--seq', `${win} de ${days.length} dia${days.length > 1 ? 's' : ''} no lucro`, lose ? `${lose} dia${lose > 1 ? 's' : ''} de prejuízo` : 'Nenhum dia de prejuízo 🎉', fmtPct(win / days.length * 100, 0));
+  h += row('⭐', '--good-fill', 'Melhor dia', longDate(best.date), `<span class="${best.profit >= 0 ? 'pos' : 'neg'}">${fmtMoney(best.profit)}</span>`);
+  if (worst.date !== best.date) h += row('📉', worst.profit < 0 ? '--bad' : '--warn', 'Pior dia', longDate(worst.date), `<span class="${worst.profit >= 0 ? 'pos' : 'neg'}">${fmtMoney(worst.profit)}</span>`);
+  if (state.plat === 'all' && state.country === 'all') {
+    const T = totals(rows);
+    const ps = [['Taboola', T.tabRev, T.tab], ['MGID', T.mgRev, T.mg]].filter((x) => x[2] > 0).map(([n, rv, sp]) => ({ n, roas: rv / sp, profit: rv - sp }));
+    if (ps.length) { const b = ps.sort((a, c) => c.profit - a.profit)[0]; h += row('📡', b.n === 'MGID' ? '--s2' : '--s1', `Melhor plataforma: ${b.n}`, `ROAS ${fmtX(b.roas)}${b.n === 'MGID' ? ' (estimado)' : ''}`, `<span class="${b.profit >= 0 ? 'pos' : 'neg'}">${fmtMoneyS(b.profit)}</span>`); }
+  }
+  if (state.country === 'all') {
+    const cs = countryStats(inRange(r)).filter((x) => x.rev > 0).sort((a, b) => b.profit - a.profit);
+    if (cs.length) { const b = cs[0]; h += row(flag(b.cc), '--seq', `Melhor país: ${esc(cname(b.cc))}`, `ROAS ${b.spend ? fmtX(b.rev / b.spend) : '—'} · ${fmtInt(b.sales)} vendas`, `<span class="${b.profit >= 0 ? 'pos' : 'neg'}">${fmtMoneyS(b.profit)}</span>`); }
+  }
+  const ca = campaignStats(inRange(r)).rows.filter((x) => x.profit > 0).sort((a, b) => b.profit - a.profit)[0];
+  if (ca) h += row('🏆', '--good-fill', 'Melhor campanha', `${esc(ca.name)} · ${ca.net}`, `<span class="pos">${ca.est ? '≈ ' : ''}${fmtMoneyS(ca.profit)}</span>`);
+  $('insights').innerHTML = h;
+}
+function drawTiles(T, P, hasPrev, prevLabel) {
+  const R = (X) => ({ ctr: div(X.clicks, X.imps) * 100, cpc: div(X.spend, X.clicks), epc: div(X.rev, X.clicks), cpm: div(X.spend, X.imps) * 1000, ups: div(X.upsRev, X.revAll) * 100, refunds: X.refunds });
+  const c = R(T), p = R(P);
+  const delta = (v, pv, lower, points) => {
+    if (!hasPrev || !isFinite(v) || !isFinite(pv)) return '<span class="pill">—</span>';
+    const ch = points ? v - pv : pv ? (v - pv) / Math.abs(pv) * 100 : NaN;
+    if (!isFinite(ch) || Math.abs(ch) < 0.5) return `<span class="pill">= ${prevLabel}</span>`;
+    const good = lower ? ch < 0 : ch > 0;
+    return `<span class="pill ${good ? 'up' : 'down'}" title="${prevLabel}">${ch > 0 ? '▲' : '▼'} ${Math.abs(ch).toLocaleString('pt-BR', { maximumFractionDigits: points ? 1 : 0 })}${points ? ' p.p.' : '%'}</span>`;
+  };
+  const all = state.plat === 'all' && state.country === 'all';
+  const tiles = [
+    ['CTR do anúncio', fmtPct(c.ctr, 2), delta(c.ctr, p.ctr, false, true), 'cliques ÷ impressões'],
+    ['CPC médio', dash(c.cpc, fmtMoney), delta(c.cpc, p.cpc, true), 'investimento ÷ cliques'],
+    ['EPC', dash(c.epc, fmtMoney), delta(c.epc, p.epc), 'faturamento ÷ cliques', isFinite(c.epc) && isFinite(c.cpc) ? (c.epc >= c.cpc ? 'pos' : 'neg') : ''],
+    ['CPM', dash(c.cpm, fmtMoney), delta(c.cpm, p.cpm, true), 'custo por mil impressões'],
+    ['Faturamento de upsell', all ? fmtPct(c.ups, 0) : '—', all ? delta(c.ups, p.ups, false, true) : '<span class="pill">só no total</span>', 'parte do faturamento que veio de upsell'],
+    ['Reembolsos', all ? fmtMoneyS(c.refunds || 0) : '—', all ? delta(c.refunds, p.refunds, true) : '<span class="pill">só no total</span>', 'valor reembolsado no período'],
+  ];
+  $('tiles').innerHTML = tiles.map(([l, v, d, h, cls]) => `<div class="tile" title="${esc(h)}"><small>${l}</small><div class="tv ${cls || ''}">${v}</div>${d}</div>`).join('');
+}
+function drawTrendCharts(r) {
+  const ctx = contextRows(r);
+  let acc = 0; const cum = ctx.map((v) => (acc += isFinite(v.profit) ? v.profit : 0));
+  const o = baseOpts();
+  const col = acc >= 0 ? css('--good-fill') : css('--bad');
+  chart('cum', 'c-cum', { type: 'line', data: { labels: ctx.map((v) => shortDate(v.date)), datasets: [{ label: 'Lucro acumulado', data: cum, borderColor: col, backgroundColor: col, borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, tension: 0.25 }] }, options: { ...o, scales: { ...o.scales, y: { ...o.scales.y, beginAtZero: false } } } });
+  const o2 = baseOpts();
+  o2.plugins.tooltip.callbacks.label = (c) => ` ${c.dataset.label}: ${c.parsed.y == null ? '—' : fmtMoney(c.parsed.y)}`;
+  o2.scales.y.ticks.callback = (v) => v.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+  chart('epc', 'c-epc', { type: 'line', data: { labels: ctx.map((v) => shortDate(v.date)), datasets: [
+    { label: 'EPC', data: ctx.map((v) => (v.clicks ? v.rev / v.clicks : null)), borderColor: css('--rev'), backgroundColor: css('--rev'), borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, tension: 0.25, spanGaps: true },
+    { label: 'CPC', data: ctx.map((v) => (v.clicks ? v.spend / v.clicks : null)), borderColor: css('--s2'), backgroundColor: css('--s2'), borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, tension: 0.25, spanGaps: true },
+  ] }, options: o2 });
+}
+
 // ---------- PLATAFORMAS ----------
 function drawPlatforms(rows, r) {
   const T = totals(rows);
   const tc = sum(rows, 'tabClicks'), ti = sum(rows, 'tabImps'), mc = sum(rows, 'mgClicks'), mi = sum(rows, 'mgImps');
   const ts = sum(rows, 'tabSales'), ms = sum(rows, 'mgSales'), mconv = sum(rows, 'mgConv');
+  const roasT = div(T.tabRev, T.tab), roasM = div(T.mgRev, T.mg);
+  const bestNet = (roasT || 0) >= (roasM || 0) ? 'Taboola' : 'MGID';
+  const ptag = (name, spend, rev) => !spend ? '<span class="tag2 neutral">Sem investimento</span>' : rev / spend >= 1.5 && name === bestNet ? '<span class="tag2 scale">🚀 Escalar</span>' : rev >= spend ? '<span class="tag2 good">Lucrativa</span>' : '<span class="tag2 bad">Revisar</span>';
   const net = (name, color, spend, rev, sales, clicks, imps, extra) => `
-    <h2><i class="dot" style="background:var(${color})"></i>${name}</h2>
+    <h2><i class="dot" style="background:var(${color})"></i>${name} <span style="margin-left:auto">${ptag(name, spend, rev)}</span></h2>
     <dl>
       <div><dt>Gasto</dt><dd>${fmtMoneyS(spend)}</dd></div>
       <div><dt>Receita${name === 'MGID' ? ' (est.)' : ''}</dt><dd>${fmtMoneyS(rev)}</dd></div>
@@ -589,44 +731,101 @@ function drawPlatforms(rows, r) {
 }
 
 // ---------- CAMPANHAS ----------
-function drawCampaigns() {
-  const r = range(), days = inRange(r);
+// Junta as campanhas do período e estima vendas/receita de cada uma:
+// a receita da rede (Ratoeira) é dividida entre as campanhas dela, proporcional às conversões
+// que a própria rede reporta (ou aos cliques, quando não há conversão). Quando a rede informa
+// receita por campanha, usamos a dela.
+function campaignStats(days) {
   const tabCur = state.data.tab_currency || 'BRL', mgCur = state.data.mgid_currency || state.data.meta.mgid_currency;
-  const agg = {};
+  const agg = {}, netTot = { Taboola: { rev: 0, sales: 0 }, MGID: { rev: 0, sales: 0 } };
   const add = (net, list, d, srcCur) => {
     const fx = d.fx || 5.5;
     const conv = (x) => (srcCur === state.cur ? x : state.cur === 'BRL' ? x * fx : x / fx);
     for (const c of list || []) {
-      const a = (agg[net + c.id] ||= { net, id: c.id, name: c.name, spend: 0, clicks: 0, imps: 0, conv: 0, cval: 0 });
+      const a = (agg[net + c.id] ||= { net, id: c.id, name: c.name, spend: 0, clicks: 0, imps: 0, conv: 0, cval: 0, days: new Set() });
       a.name = c.name || a.name; a.spend += conv(c.spend || 0); a.clicks += c.clicks || 0; a.imps += c.imps || 0; a.conv += c.conv || 0; a.cval += conv(c.cval || 0);
+      if (c.spend > 0) a.days.add(d.date);
     }
   };
   for (const d of days) {
+    const v = vals(d);
+    netTot.Taboola.rev += v.tabRev; netTot.Taboola.sales += v.tabSales;
+    netTot.MGID.rev += v.mgRev; netTot.MGID.sales += v.mgSales;
     if (state.plat !== 'mgid') add('Taboola', d.tab_camps, d, tabCur);
     if (state.plat !== 'taboola') add('MGID', d.mgid_camps, d, mgCur);
   }
   let rows = Object.values(agg).filter((x) => x.spend > 0 || x.clicks > 0);
-  const hasVal = rows.some((x) => x.cval > 0);
+  for (const net of ['Taboola', 'MGID']) {
+    const list = rows.filter((x) => x.net === net);
+    const hasVal = list.some((x) => x.cval > 0);
+    const totConv = list.reduce((a, x) => a + x.conv, 0), totClicks = list.reduce((a, x) => a + x.clicks, 0);
+    for (const x of list) {
+      const share = totConv ? x.conv / totConv : totClicks ? x.clicks / totClicks : 0;
+      x.est = !hasVal;
+      x.rev = hasVal ? x.cval : netTot[net].rev * share;
+      x.sales = netTot[net].sales * share;
+    }
+  }
+  const spendAll = rows.reduce((a, x) => a + x.spend, 0), salesAll = rows.reduce((a, x) => a + x.sales, 0);
+  const avgCpa = salesAll >= 1 ? spendAll / salesAll : NaN;
+  rows = rows.map((x) => {
+    const y = { ...x, nd: x.days.size, cpc: div(x.spend, x.clicks), ctr: div(x.clicks, x.imps) * 100, cpa: div(x.spend, x.sales), roas: div(x.rev, x.spend), profit: x.rev - x.spend, epc: div(x.rev, x.clicks) };
+    y.sug = suggestion(y, avgCpa, spendAll);
+    return y;
+  });
+  return { rows, avgCpa, spendAll };
+}
+// regras de sugestão (ponto de partida, não verdade absoluta)
+function suggestion(x, avgCpa, spendAll) {
+  const minSpend = isFinite(avgCpa) ? avgCpa * 0.5 : spendAll * 0.05;
+  if (x.spend < minSpend) return { k: 'neutral', t: 'Poucos dados', why: 'gasto ainda baixo para decidir', o: 5 };
+  if (x.sales < 0.5 && isFinite(avgCpa) && x.spend >= avgCpa * 1.5) return { k: 'bad', t: '⏸ Pausar', why: `gastou ${fmtMoneyS(x.spend)} sem vender (CPA médio ${fmtMoneyS(avgCpa)})`, o: 0 };
+  if (x.sales < 0.5 && !isFinite(avgCpa) && x.conv === 0 && x.spend >= spendAll * 0.25) return { k: 'warn', t: 'Sem conversão', why: 'maior gasto sem nenhuma conversão até agora', o: 2 };
+  if (x.roas >= 1.5 && x.sales >= 1) return { k: 'scale', t: '🚀 Escalar', why: `ROAS ${fmtX(x.roas)} com ${x.sales.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} vendas`, o: 4 };
+  if (x.roas < 1 && x.sales >= 0.5) return { k: 'warn', t: '🔧 Otimizar', why: `ROAS ${fmtX(x.roas)}: vende, mas abaixo do custo`, o: 1 };
+  if (x.roas >= 1) return { k: 'good', t: 'Lucrativa', why: `ROAS ${fmtX(x.roas)}`, o: 3 };
+  return { k: 'neutral', t: 'Acompanhar', why: 'sem vendas suficientes para decidir', o: 5 };
+}
+const tagHtml = (sg) => `<span class="tag2 ${sg.k}" title="${esc(sg.why)}">${sg.t}</span>`;
+function drawCampaigns() {
+  const r = range(), days = inRange(r);
+  const { rows: all, avgCpa } = campaignStats(days);
+  const anyEst = all.some((x) => x.est);
+  // cards de destaque e sugestões
+  const best = all.filter((x) => x.profit > 0).sort((a, b) => b.profit - a.profit)[0];
+  $('camp-best').innerHTML = best ? `<div class="best"><div class="trophy">🏆</div><div style="min-width:0"><div class="note" style="text-transform:uppercase;letter-spacing:.05em;font-weight:650">Melhor campanha do período</div>
+    <h3 style="margin:4px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(best.name)}">${esc(best.name)}</h3>
+    <span class="tag"><i class="dot" style="background:var(${best.net === 'MGID' ? '--s2' : '--s1'})"></i>${best.net} · ${best.nd} dia${best.nd === 1 ? '' : 's'} rodando</span>
+    <div class="bstats"><div><small>Lucro</small><b class="pos">${best.est ? '≈ ' : ''}${fmtMoneyS(best.profit)}</b></div><div><small>ROAS</small><b>${fmtX(best.roas)}</b></div><div><small>Vendas</small><b>${best.est ? '≈ ' : ''}${best.sales.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}</b></div><div><small>CPA</small><b>${dash(best.cpa, fmtMoneyS)}</b></div><div><small>EPC</small><b>${dash(best.epc, fmtMoney)}</b></div><div><small>CPC</small><b>${dash(best.cpc, fmtMoney)}</b></div></div></div></div>`
+    : `<h3>🏆 Melhor campanha</h3><p class="note">Nenhuma campanha com lucro no período ainda.</p>`;
+  const sugItem = (x) => `<div class="sug"><b title="${esc(x.name)}"><i class="dot" style="background:var(${x.net === 'MGID' ? '--s2' : '--s1'});margin-right:6px"></i>${esc(x.name)}</b><span class="num ${x.profit >= 0 ? 'pos' : 'neg'}">${x.est ? '≈ ' : ''}${fmtMoneyS(x.profit)}</span><span class="why">${tagHtml(x.sug)} ${esc(x.sug.why)} · gasto ${fmtMoneyS(x.spend)}</span></div>`;
+  const scale = all.filter((x) => x.sug.k === 'scale').sort((a, b) => b.profit - a.profit);
+  const bad = all.filter((x) => ['bad', 'warn'].includes(x.sug.k)).sort((a, b) => a.sug.o - b.sug.o || b.spend - a.spend);
+  $('sug-scale').innerHTML = scale.length ? scale.slice(0, 5).map(sugItem).join('') : '<p class="note">Nenhuma campanha com ROAS ≥ 1,5 e vendas no período ainda. Com mais dias de dados, as candidatas aparecem aqui.</p>';
+  $('sug-bad-hint').textContent = 'Campanhas queimando verba ou vendendo abaixo do custo' + (isFinite(avgCpa) ? ` · CPA médio ${fmtMoneyS(avgCpa)}` : '');
+  $('sug-bad').innerHTML = bad.length ? bad.slice(0, 6).map(sugItem).join('') : '<p class="note">Nenhuma campanha no vermelho neste período. 👏</p>';
+
+  // tabela
+  let rows = all;
   if (state.campQuery) rows = rows.filter((x) => x.name.toLowerCase().includes(state.campQuery) || x.id.includes(state.campQuery));
-  const derived = (x) => ({ ...x, cpc: div(x.spend, x.clicks), ctr: div(x.clicks, x.imps) * 100, cpa: div(x.spend, x.conv), roas: div(x.cval, x.spend) });
-  rows = rows.map(derived);
   const { key, dir } = state.campSort;
-  rows.sort((a, b) => { const va = a[key], vb = b[key]; const s = typeof va === 'string' ? va.localeCompare(vb) : (isFinite(va) ? va : -Infinity) - (isFinite(vb) ? vb : -Infinity); return dir === 'asc' ? s : -s; });
+  rows = rows.slice().sort((a, b) => { const va = key === 'sug' ? a.sug.o : a[key], vb = key === 'sug' ? b.sug.o : b[key]; const s2 = typeof va === 'string' ? va.localeCompare(vb) : (isFinite(va) ? va : -Infinity) - (isFinite(vb) ? vb : -Infinity); return dir === 'asc' ? s2 : -s2; });
   const missing = days.length && days.every((d) => !d.tab_camps && !d.mgid_camps);
-  $('camp-note').textContent = (missing ? 'Os dados por campanha começam a aparecer após a próxima atualização. ' : '') + (state.country !== 'all' ? 'O filtro de país não se aplica às campanhas. ' : '') + 'Conversões e CPA conforme reportados por cada rede.';
-  const cols = [['net', 'Rede', 'l'], ['name', 'Campanha', 'l'], ['spend', 'Gasto'], ['clicks', 'Cliques'], ['cpc', 'CPC'], ['ctr', 'CTR'], ['conv', 'Conv.'], ['cpa', 'CPA']].concat(hasVal ? [['cval', 'Receita (rede)'], ['roas', 'ROAS (rede)']] : []);
-  const tot = derived({ spend: sum(rows, 'spend'), clicks: sum(rows, 'clicks'), imps: sum(rows, 'imps'), conv: sum(rows, 'conv'), cval: sum(rows, 'cval') });
-  const cell = (x, k) => ({ net: `<span class="tag"><i class="dot" style="background:var(${x.net === 'MGID' ? '--s2' : '--s1'})"></i>${x.net}</span>`, name: `<span title="${esc(x.name)} (${esc(x.id)})">${esc(x.name)}</span>`, spend: fmtMoneyS(x.spend), clicks: fmtInt(x.clicks), cpc: dash(x.cpc, fmtMoney), ctr: fmtPct(x.ctr, 2), conv: fmtInt(x.conv), cpa: dash(x.cpa, fmtMoneyS), cval: fmtMoneyS(x.cval), roas: fmtX(x.roas) }[k]);
+  $('camp-note').textContent = (missing ? 'Os dados por campanha começam a aparecer após a próxima atualização. ' : '') + (state.country !== 'all' ? 'O filtro de país não se aplica às campanhas. ' : '') + (anyEst ? '≈ = estimado: a receita da rede dividida entre as campanhas, proporcional às conversões (ou cliques) de cada uma.' : '');
+  const cols = [['net', 'Rede', 'l'], ['name', 'Campanha', 'l'], ['sug', 'Sugestão', 'l'], ['spend', 'Gasto'], ['clicks', 'Cliques'], ['cpc', 'CPC'], ['ctr', 'CTR'], ['conv', 'Conv. (rede)'], ['sales', 'Vendas'], ['cpa', 'CPA'], ['rev', 'Receita'], ['roas', 'ROAS'], ['profit', 'Lucro']];
+  const T = { spend: sum(rows, 'spend'), clicks: sum(rows, 'clicks'), imps: sum(rows, 'imps'), conv: sum(rows, 'conv'), sales: sum(rows, 'sales'), rev: sum(rows, 'rev') };
+  const tot = { ...T, cpc: div(T.spend, T.clicks), ctr: div(T.clicks, T.imps) * 100, cpa: div(T.spend, T.sales), roas: div(T.rev, T.spend), profit: T.rev - T.spend, est: anyEst };
+  const e = (x) => (x.est ? '≈ ' : '');
+  const cell = (x, k) => ({ net: `<span class="tag"><i class="dot" style="background:var(${x.net === 'MGID' ? '--s2' : '--s1'})"></i>${x.net}</span>`, name: `<span title="${esc(x.name)} (${esc(x.id)})">${esc(x.name)}</span>`, sug: x.sug ? tagHtml(x.sug) : '', spend: fmtMoneyS(x.spend), clicks: fmtInt(x.clicks), cpc: dash(x.cpc, fmtMoney), ctr: fmtPct(x.ctr, 2), conv: fmtInt(x.conv), sales: e(x) + x.sales.toLocaleString('pt-BR', { maximumFractionDigits: 1 }), cpa: dash(x.cpa, fmtMoneyS), rev: e(x) + fmtMoneyS(x.rev), roas: fmtX(x.roas), profit: `<span class="${x.profit >= 0 ? 'pos' : 'neg'}">${e(x)}${fmtMoneyS(x.profit)}</span>` }[k]);
   $('t-camp').innerHTML = !rows.length ? `<tbody><tr><td class="empty">Sem campanhas com gasto nesse período${state.campQuery ? ' para essa busca' : ''}.</td></tr></tbody>` :
     `<thead><tr>${cols.map(([k, l, c]) => `<th class="sort ${c || ''}" data-k="${k}"${state.campSort.key === k ? ` data-dir="${dir}"` : ''}>${l}</th>`).join('')}</tr></thead>
     <tbody>${rows.map((x) => `<tr>${cols.map(([k, , c]) => `<td class="${c || ''}${k === 'name' ? ' name' : ''}">${cell(x, k)}</td>`).join('')}</tr>`).join('')}</tbody>
-    <tfoot><tr><td class="l">Total</td><td class="l">${rows.length} campanha${rows.length === 1 ? '' : 's'}</td>${cols.slice(2).map(([k]) => `<td>${cell(tot, k)}</td>`).join('')}</tr></tfoot>`;
+    <tfoot><tr><td class="l">Total</td><td class="l">${rows.length} campanha${rows.length === 1 ? '' : 's'}</td><td></td>${cols.slice(3).map(([k]) => `<td>${cell(tot, k)}</td>`).join('')}</tr></tfoot>`;
   $('t-camp').querySelectorAll('th.sort').forEach((th) => (th.onclick = () => { const k = th.dataset.k; state.campSort = { key: k, dir: state.campSort.key === k && state.campSort.dir === 'desc' ? 'asc' : 'desc' }; drawCampaigns(); }));
 }
 
 // ---------- PAÍSES ----------
-function drawCountries() {
-  const r = range(), days = inRange(r);
+function countryStats(days) {
   const tabCur = state.data.tab_currency || 'BRL', mgCur = state.data.mgid_currency || state.data.meta.mgid_currency || 'USD';
   const agg = {};
   const blank = (cc) => ({ cc, sales: 0, rev: 0, spend: 0, tab: 0, mg: 0, clicks: 0 });
@@ -636,7 +835,21 @@ function drawCountries() {
     if (state.plat !== 'mgid') for (const [cc, [sp, cl]] of Object.entries(d.tab_ctry || {})) { const a = (agg[cc] ||= blank(cc)); const v = (tabCur === 'USD' ? sp : sp / fx) * k; a.tab += v; a.spend += v; a.clicks += cl; }
     if (state.plat !== 'taboola') for (const [cc, [sp, cl]] of Object.entries(d.mgid_ctry || {})) { const a = (agg[cc] ||= blank(cc)); const v = (mgCur === 'BRL' ? sp / fx : sp) * k; a.mg += v; a.spend += v; a.clicks += cl; }
   }
-  const rows = Object.values(agg).filter((x) => x.rev > 0 || x.spend > 0).sort((a, b) => b.rev - a.rev || b.spend - a.spend);
+  return Object.values(agg).map((x) => ({ ...x, profit: x.rev - x.spend }));
+}
+function drawAlloc(rows) {
+  const pos = rows.filter((x) => x.spend > 0 && x.profit > 0).sort((a, b) => b.profit - a.profit), neg = rows.filter((x) => x.spend > 0 && x.profit < 0);
+  const totP = pos.reduce((a, x) => a + x.profit, 0), totS = rows.reduce((a, x) => a + x.spend, 0);
+  const colors = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948'];
+  if (!pos.length) { $('alloc').innerHTML = `<div class="note">${rows.some((x) => x.spend > 0) ? 'Nenhum país fechou no lucro neste período. Vale revisar criativos, presell e oferta antes de redistribuir a verba.' : 'Sem gasto por país no período.'}</div>`; return; }
+  $('alloc').innerHTML = `<div class="alloc">${pos.map((x, i) => `<div style="flex:${x.profit / totP};background:${colors[i % 8]}" title="${esc(cname(x.cc))}: ${fmtPct(x.profit / totP * 100, 0)}">${x.profit / totP > 0.09 ? esc(cname(x.cc)) + ' ' + fmtPct(x.profit / totP * 100, 0) : ''}</div>`).join('')}</div>
+    ${pos.map((x, i) => `<div class="citem"><span class="sw" style="background:${colors[i % 8]}"></span><span>${flag(x.cc)}</span><span><b>${esc(cname(x.cc))}</b> <span class="note">hoje recebe ${fmtPct(x.spend / totS * 100, 0)} da verba · ROAS ${fmtX(x.rev / x.spend)}</span></span><b>${fmtPct(x.profit / totP * 100, 0)}</b></div>`).join('')}
+    ${neg.length ? `<div class="citem"><span></span><span>⚠</span><span class="note" style="grid-column:3 / -1">Em prejuízo no período: <b style="color:var(--ink)">${neg.map((x) => esc(cname(x.cc))).join(', ')}</b>. Considere reduzir, bloquear sites ruins ou testar novos criativos.</span></div>` : ''}`;
+}
+function drawCountries() {
+  const r = range(), days = inRange(r);
+  const rows = countryStats(days).filter((x) => x.rev > 0 || x.spend > 0).sort((a, b) => b.rev - a.rev || b.spend - a.spend);
+  drawAlloc(rows);
   const totRev = sum(rows, 'rev'), totSpend = sum(rows, 'spend'), totSales = sum(rows, 'sales');
   const max = Math.max(...rows.map((x) => x.rev), 1);
   const missing = days.length && days.every((d) => !d.countries);
