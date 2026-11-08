@@ -12,7 +12,7 @@ https://rochaepaminondasp-coder.github.io/painel-neurohoney-brollo/
 - A cada execução só os últimos 3 dias são recalculados; o histórico (30 dias) vem da publicação anterior.
 
 ## Secrets necessários
-`DASH_PASSWORD`, `RATOEIRA_MCP_URL`, `TABOOLA_CLIENT_ID`, `TABOOLA_CLIENT_SECRET`, `TABOOLA_ACCOUNT_ID`, `MGID_CLIENT_ID`, `MGID_TOKEN`.
+`DASH_PASSWORD`, `RATOEIRA_MCP_URL`, `TABOOLA_CLIENT_ID`, `TABOOLA_CLIENT_SECRET`, `TABOOLA_ACCOUNT_ID`, `MGID_CLIENT_ID` e, para a MGID, `MGID_EMAIL` + `MGID_PASSWORD` (gera token novo a cada execução) ou `MGID_TOKEN`.
 
 Opcionais (variáveis de ambiente no workflow): `RATOEIRA_PROJETO_ID`, `MGID_CURRENCY` (padrão USD), `HISTORY_DAYS`, `REFRESH_DAYS`.
 

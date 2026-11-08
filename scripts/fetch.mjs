@@ -180,8 +180,21 @@ async function taboolaCampaigns(start, end) {
 
 // ---------- MGID API ----------
 const MGID_BASE = 'https://api.mgid.com/v1/goodhits';
-const MGID_TOKEN = String(env.MGID_TOKEN || '').trim();
-const MGID_CLIENT = String(env.MGID_CLIENT_ID || '').trim();
+let MGID_TOKEN = String(env.MGID_TOKEN || '').trim();
+let MGID_CLIENT = String(env.MGID_CLIENT_ID || '').trim();
+// Se houver e-mail e senha da MGID, gera um token novo a cada execução (o token da MGID expira).
+async function mgidLogin() {
+  if (!env.MGID_EMAIL || !env.MGID_PASSWORD) return;
+  try {
+    const res = await fetchT('https://api.mgid.com/v1/auth/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' }, body: new URLSearchParams({ email: env.MGID_EMAIL.trim(), password: env.MGID_PASSWORD }) });
+    const text = await res.text();
+    if (!res.ok) { console.log(`[aviso] MGID login HTTP ${res.status} ${text.replace(/\s+/g, ' ').slice(0, 120)}`); return; }
+    const j = JSON.parse(text);
+    if (j.token) { MGID_TOKEN = j.token; console.log('MGID login OK (token novo gerado)'); }
+    const idAuth = String(j.idAuth ?? j.id_auth ?? j.clientId ?? '');
+    if (idAuth) { console.log(`MGID_CLIENT_ID confere com a conta do login: ${idAuth === MGID_CLIENT ? 'sim' : 'não — usando o da conta'}`); MGID_CLIENT = idAuth; }
+  } catch (e) { console.log('[aviso] MGID login:', e.message); }
+}
 const mgidModes = {
   query: (qs) => [{ token: MGID_TOKEN, ...qs }, { Accept: 'application/json' }],
   bearer: (qs) => [qs, { Accept: 'application/json', Authorization: `Bearer ${MGID_TOKEN}` }],
@@ -281,7 +294,7 @@ async function main() {
   let payload;
   if (MOCK) payload = mockData();
   else {
-    const hasR = !!env.RATOEIRA_MCP_URL, hasT = !!(env.TABOOLA_CLIENT_ID && env.TABOOLA_CLIENT_SECRET && env.TABOOLA_ACCOUNT_ID), hasM = !!(env.MGID_CLIENT_ID && env.MGID_TOKEN);
+    const hasR = !!env.RATOEIRA_MCP_URL, hasT = !!(env.TABOOLA_CLIENT_ID && env.TABOOLA_CLIENT_SECRET && env.TABOOLA_ACCOUNT_ID), hasM = !!((env.MGID_CLIENT_ID && env.MGID_TOKEN) || (env.MGID_EMAIL && env.MGID_PASSWORD));
     const prev = await loadPrevious(pass);
     const prevByDate = Object.fromEntries((prev?.days || []).map((d) => [d.date, d]));
     const window = lastDays(HISTORY_DAYS);
@@ -293,7 +306,7 @@ async function main() {
     let mcp = null;
     if (hasR) { try { mcp = new Mcp(env.RATOEIRA_MCP_URL); await mcp.init(); console.log('Ratoeira OK, tools:', mcp.tools.length); } catch (e) { logErr('ratoeira', e.message); mcp = null; } }
     if (hasT) { try { await taboolaAuth(); console.log('Taboola OK'); await taboolaResolveAccount(); } catch (e) { logErr('taboola', e.message); } }
-    if (hasM) await mgidLoadNames();
+    if (hasM) { await mgidLogin(); await mgidLoadNames(); }
 
     // Taboola diário pela API direta (fallback de gasto se a Ratoeira falhar)
     let tabDaily = {};
