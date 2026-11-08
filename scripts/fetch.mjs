@@ -147,10 +147,26 @@ async function taboolaAuth() {
   if (!res.ok) throw new Error(`Taboola auth HTTP ${res.status}`);
   taboolaToken = (await res.json()).access_token;
 }
+let taboolaAccount = env.TABOOLA_ACCOUNT_ID;
+async function taboolaResolveAccount() {
+  try {
+    const res = await fetchT('https://backstage.taboola.com/backstage/api/1.0/users/current/allowed-accounts', { headers: { Authorization: `Bearer ${taboolaToken}` } });
+    if (!res.ok) { console.log(`[aviso] Taboola allowed-accounts HTTP ${res.status}`); return; }
+    const list = (await res.json()).results || [];
+    const want = String(env.TABOOLA_ACCOUNT_ID).trim().toLowerCase();
+    const hit = list.find((a) => [a.account_id, a.id, a.name].map((v) => String(v ?? '').trim().toLowerCase()).includes(want));
+    const advertisers = list.filter((a) => (a.partner_types || []).includes('ADVERTISER') || a.type === 'PARTNER');
+    console.log(`Taboola: ${list.length} conta(s) acessível(is); secret corresponde a uma delas: ${hit ? 'sim' : 'não'}.`);
+    if (hit) taboolaAccount = hit.account_id;
+    else if (list.length === 1) taboolaAccount = list[0].account_id;
+    else if (advertisers.length === 1) taboolaAccount = advertisers[0].account_id;
+  } catch (e) { console.log('[aviso] Taboola allowed-accounts:', e.message); }
+}
+async function errBody(res) { try { return (await res.text()).replace(/\s+/g, ' ').slice(0, 160); } catch { return ''; } }
 async function taboolaReport(dimension, start, end) {
-  const url = `https://backstage.taboola.com/backstage/api/1.0/${encodeURIComponent(env.TABOOLA_ACCOUNT_ID)}/reports/campaign-summary/dimensions/${dimension}?start_date=${start}&end_date=${end}`;
+  const url = `https://backstage.taboola.com/backstage/api/1.0/${encodeURIComponent(taboolaAccount)}/reports/campaign-summary/dimensions/${dimension}?start_date=${start}&end_date=${end}`;
   const res = await fetchT(url, { headers: { Authorization: `Bearer ${taboolaToken}` } });
-  if (!res.ok) throw new Error(`Taboola ${dimension} HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`Taboola ${dimension} HTTP ${res.status} ${await errBody(res)}`);
   return (await res.json()).results || [];
 }
 async function taboolaCampaigns(start, end) {
@@ -164,11 +180,30 @@ async function taboolaCampaigns(start, end) {
 
 // ---------- MGID API ----------
 const MGID_BASE = 'https://api.mgid.com/v1/goodhits';
+const MGID_TOKEN = String(env.MGID_TOKEN || '').trim();
+const MGID_CLIENT = String(env.MGID_CLIENT_ID || '').trim();
+const mgidModes = {
+  query: (qs) => [{ token: MGID_TOKEN, ...qs }, { Accept: 'application/json' }],
+  bearer: (qs) => [qs, { Accept: 'application/json', Authorization: `Bearer ${MGID_TOKEN}` }],
+  plain: (qs) => [qs, { Accept: 'application/json', Authorization: MGID_TOKEN }],
+};
+let mgidMode = null, mgidDead = null;
 async function mgidGet(path, params = {}) {
-  const qs = new URLSearchParams({ token: env.MGID_TOKEN, ...params });
-  const res = await fetchT(`${MGID_BASE}${path}?${qs}`, { headers: { Authorization: `Bearer ${env.MGID_TOKEN}`, Accept: 'application/json' } });
-  const text = await res.text();
-  if (!res.ok) throw new Error(`MGID ${path.split('/').pop()} HTTP ${res.status}`);
+  if (mgidDead) throw new Error(mgidDead);
+  const modes = mgidMode ? [mgidMode] : Object.keys(mgidModes);
+  let res, text, tried = [];
+  for (const m of modes) {
+    const [qs, headers] = mgidModes[m](params);
+    res = await fetchT(`${MGID_BASE}${path}?${new URLSearchParams(qs)}`, { headers });
+    text = await res.text();
+    tried.push(`${m}=${res.status}`);
+    if (res.ok) { if (!mgidMode) { mgidMode = m; console.log(`MGID OK (autenticação: ${m})`); } break; }
+  }
+  if (!res.ok) {
+    const msg = `MGID ${path.split('/').pop()} HTTP ${res.status} [${tried.join(' ')}] ${text.replace(/\s+/g, ' ').slice(0, 160)}`;
+    if (!mgidMode && res.status === 401) mgidDead = msg; // não insiste 30x com token inválido
+    throw new Error(msg);
+  }
   try { return JSON.parse(text); } catch { throw new Error('MGID resposta não-JSON'); }
 }
 // Descreve só a estrutura (chaves), nunca valores — logs do Actions são públicos.
@@ -195,7 +230,7 @@ function mgidCollect(obj) {
   return out;
 }
 async function mgidStats(start, end) {
-  const j = await mgidGet(`/clients/${env.MGID_CLIENT_ID}/campaigns-stat`, { dateInterval: 'interval', startDate: start, endDate: end });
+  const j = await mgidGet(`/clients/${MGID_CLIENT}/campaigns-stat`, { dateInterval: 'interval', startDate: start, endDate: end });
   const c = mgidCollect(j);
   if (!Object.keys(c).length && !mgidStats.warned) { mgidStats.warned = true; console.log('[aviso] MGID estrutura sem "spent":', shape(j)); }
   return c;
@@ -203,7 +238,7 @@ async function mgidStats(start, end) {
 let mgidNames = {};
 async function mgidLoadNames() {
   try {
-    const j = await mgidGet(`/clients/${env.MGID_CLIENT_ID}/campaigns`, { limit: 700 });
+    const j = await mgidGet(`/clients/${MGID_CLIENT}/campaigns`, { limit: 700 });
     const walk = (o, cid) => {
       if (!o || typeof o !== 'object') return;
       if (typeof o.name === 'string' && (o.id || cid)) { mgidNames[String(o.id ?? cid)] = o.name; return; }
@@ -246,17 +281,18 @@ async function main() {
   let payload;
   if (MOCK) payload = mockData();
   else {
+    const hasR = !!env.RATOEIRA_MCP_URL, hasT = !!(env.TABOOLA_CLIENT_ID && env.TABOOLA_CLIENT_SECRET && env.TABOOLA_ACCOUNT_ID), hasM = !!(env.MGID_CLIENT_ID && env.MGID_TOKEN);
     const prev = await loadPrevious(pass);
     const prevByDate = Object.fromEntries((prev?.days || []).map((d) => [d.date, d]));
     const window = lastDays(HISTORY_DAYS);
     const refresh = new Set(window.slice(-REFRESH_DAYS));
-    const todo = window.filter((d) => refresh.has(d) || !prevByDate[d] || prevByDate[d].partial);
+    const need = (d, k) => refresh.has(d) || !prevByDate[d] || !prevByDate[d][k];
+    const todo = window.filter((d) => need(d, 'ok_r') || need(d, 'ok_rt') || (hasM && need(d, 'ok_m')));
     console.log(`Histórico anterior: ${prev ? Object.keys(prevByDate).length + ' dias' : 'nenhum'}. Atualizando ${todo.length} dia(s).`);
 
-    const hasR = !!env.RATOEIRA_MCP_URL, hasT = !!(env.TABOOLA_CLIENT_ID && env.TABOOLA_CLIENT_SECRET && env.TABOOLA_ACCOUNT_ID), hasM = !!(env.MGID_CLIENT_ID && env.MGID_TOKEN);
     let mcp = null;
     if (hasR) { try { mcp = new Mcp(env.RATOEIRA_MCP_URL); await mcp.init(); console.log('Ratoeira OK, tools:', mcp.tools.length); } catch (e) { logErr('ratoeira', e.message); mcp = null; } }
-    if (hasT) { try { await taboolaAuth(); console.log('Taboola OK'); } catch (e) { logErr('taboola', e.message); } }
+    if (hasT) { try { await taboolaAuth(); console.log('Taboola OK'); await taboolaResolveAccount(); } catch (e) { logErr('taboola', e.message); } }
     if (hasM) await mgidLoadNames();
 
     // Taboola diário pela API direta (fallback de gasto se a Ratoeira falhar)
@@ -270,22 +306,25 @@ async function main() {
     for (const date of window) {
       if (!todo.includes(date)) { days.push(prevByDate[date]); continue; }
       const old = prevByDate[date] || {};
-      const d = { ...old, date, partial: false };
-      if (mcp) {
-        try { Object.assign(d, await ratoeiraDay(mcp, date)); } catch (e) { d.partial = true; logErr(`ratoeira ${date}`, e.message); }
-        try { Object.assign(d, await ratoeiraTaboolaDay(mcp, date)); } catch (e) { d.partial = true; logErr(`ratoeira-taboola ${date}`, e.message); }
+      const d = { ...old, date };
+      if (mcp && need(date, 'ok_r')) {
+        try { Object.assign(d, await ratoeiraDay(mcp, date)); d.ok_r = true; } catch (e) { d.ok_r = false; logErr(`ratoeira ${date}`, e.message); }
+      }
+      if (mcp && need(date, 'ok_rt')) {
+        try { Object.assign(d, await ratoeiraTaboolaDay(mcp, date)); d.ok_rt = true; } catch (e) { d.ok_rt = false; logErr(`ratoeira-taboola ${date}`, e.message); }
       }
       const td = tabDaily[date];
       if (td) {
         d.api_tab_spend = num(td.spent); d.api_tab_clicks = num(td.clicks); d.api_tab_imps = num(td.impressions); d.api_tab_conv = num(td.cpa_actions_num);
         if (!mcp || !d.tab_spend_brl) { d.tab_spend_brl = d.api_tab_spend; d.tab_clicks = d.api_tab_clicks; d.tab_imps = d.api_tab_imps; }
       }
-      if (hasM) {
-        try { const s = sumMgid(await withRetry(() => mgidStats(date, date))); d.mgid_spend = s.spent; d.mgid_clicks = s.clicks; d.mgid_imps = s.imps; d.mgid_conv = s.conv; }
-        catch (e) { d.partial = true; logErr(`mgid ${date}`, e.message); }
+      if (hasM && need(date, 'ok_m')) {
+        try { const s = sumMgid(await withRetry(() => mgidStats(date, date))); d.mgid_spend = s.spent; d.mgid_clicks = s.clicks; d.mgid_imps = s.imps; d.mgid_conv = s.conv; d.ok_m = true; }
+        catch (e) { d.ok_m = false; if (!mgidDead || !errors.some((x) => x.src.startsWith('mgid'))) logErr(`mgid ${date}`, e.message); }
       }
       // câmbio BRL por USD, derivado dos próprios números da Ratoeira
       d.fx = d.revenue_usd > 0 ? d.revenue_brl / d.revenue_usd : d.r_cost_usd > 0 ? d.r_cost_brl / d.r_cost_usd : d.tab_spend_usd > 0 ? d.tab_spend_brl / d.tab_spend_usd : old.fx || days.at(-1)?.fx || 5.5;
+      d.partial = (hasR && !(d.ok_r && d.ok_rt)) || (hasM && !d.ok_m);
       days.push(d);
     }
     // preenche câmbio faltante
