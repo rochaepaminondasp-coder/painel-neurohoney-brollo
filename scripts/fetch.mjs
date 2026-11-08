@@ -251,9 +251,9 @@ async function mgidReport(dateFrom, dateTo, dimensions, metrics) {
 // por dia: campanhas e totais
 async function mgidCampaignDays(from, to) {
   const out = {};
-  for (const r of await mgidReport(from, to, ['day', 'campaignId', 'campaignName'], ['spent', 'clicks', 'impressions', 'conversions', 'revenue'])) {
+  for (const r of await mgidReport(from, to, ['day', 'campaignId', 'campaignName'], ['spent', 'clicks', 'impressions', 'conversionsBuy', 'revenue'])) {
     const date = String(r.day || '').slice(0, 10); if (!date) continue;
-    const row = { id: String(r.campaignId ?? ''), name: r.campaignName || `Campanha ${r.campaignId}`, spend: r2(sp(r.spent)), clicks: num(r.clicks), imps: num(r.impressions), conv: num(r.conversions), cval: r2(sp(r.revenue)) };
+    const row = { id: String(r.campaignId ?? ''), name: r.campaignName || `Campanha ${r.campaignId}`, spend: r2(sp(r.spent)), clicks: num(r.clicks), imps: num(r.impressions), conv: num(r.conversionsBuy), cval: r2(sp(r.revenue)) };
     if (row.spend > 0 || row.clicks > 0) (out[date] ||= []).push(row);
   }
   return out;
@@ -261,11 +261,11 @@ async function mgidCampaignDays(from, to) {
 // por dia: gasto por país {CC: [gasto, cliques, impressões, conversões]}
 async function mgidCountryDays(from, to) {
   const out = {};
-  for (const r of await mgidReport(from, to, ['day', 'country'], ['spent', 'clicks', 'impressions', 'conversions'])) {
+  for (const r of await mgidReport(from, to, ['day', 'country'], ['spent', 'clicks', 'impressions', 'conversionsBuy'])) {
     const date = String(r.day || '').slice(0, 10); if (!date) continue;
     const s = r2(sp(r.spent)); if (!(s > 0 || num(r.clicks) > 0)) continue;
     const cc = countryCode(r.country), o = (out[date] ||= {}), c = (o[cc] ||= [0, 0, 0, 0]);
-    c[0] = r2(c[0] + s); c[1] += num(r.clicks); c[2] += num(r.impressions); c[3] += num(r.conversions);
+    c[0] = r2(c[0] + s); c[1] += num(r.clicks); c[2] += num(r.impressions); c[3] += num(r.conversionsBuy);
   }
   return out;
 }
@@ -316,7 +316,7 @@ async function main() {
     if (START_DATE) console.log(`Início da operação: ${START_DATE}`);
     const refresh = new Set(window.slice(-REFRESH_DAYS));
     const need = (d, k) => refresh.has(d) || !prevByDate[d] || !prevByDate[d][k];
-    const KEYS = [hasR && 'ok_r2', hasR && 'ok_rt2', hasR && 'ok_ic', hasT && 'ok_tc', hasT && 'ok_tg', hasM && 'ok_m2'].filter(Boolean);
+    const KEYS = [hasR && 'ok_r2', hasR && 'ok_rt2', hasR && 'ok_ic', hasT && 'ok_tc', hasT && 'ok_tg', hasM && 'ok_m3'].filter(Boolean);
     const todo = window.filter((d) => KEYS.some((k) => need(d, k)));
     console.log(`Histórico anterior: ${prev ? Object.keys(prevByDate).length + ' dias' : 'nenhum'}. Atualizando ${todo.length} dia(s).`);
 
@@ -337,7 +337,7 @@ async function main() {
 
     // MGID: duas chamadas para o intervalo inteiro (campanhas por dia e países por dia)
     let mgCamps = null, mgCtry = null;
-    const mDays = todo.filter((d) => need(d, 'ok_m2'));
+    const mDays = todo.filter((d) => need(d, 'ok_m3'));
     if (hasM && mDays.length) {
       try { mgCamps = await mgidCampaignDays(mDays[0], mDays.at(-1)); } catch (e) { logErr('mgid', e.message); }
       if (mgCamps) { try { mgCtry = await mgidCountryDays(mDays[0], mDays.at(-1)); } catch (e) { logErr('mgid-paises', e.message); } }
@@ -369,9 +369,9 @@ async function main() {
       if (!stopped && taboolaToken && need(date, 'ok_tg')) {
         try { d.tab_ctry = await taboolaCountryDay(date); d.ok_tg = true; } catch (e) { d.ok_tg = false; if (tgErr++ < 2) logErr(`taboola-paises ${date}`, e.message); }
       }
-      if (mgCamps && need(date, 'ok_m2')) {
+      if (mgCamps && need(date, 'ok_m3')) {
         const list = mgCamps[date] || [];
-        d.mgid_camps = list; d.ok_m2 = true;
+        d.mgid_camps = list; d.ok_m3 = true;
         d.mgid_spend = r2(list.reduce((a, c) => a + c.spend, 0)); d.mgid_clicks = list.reduce((a, c) => a + c.clicks, 0);
         d.mgid_imps = list.reduce((a, c) => a + c.imps, 0); d.mgid_conv = list.reduce((a, c) => a + c.conv, 0);
         if (mgCtry) d.mgid_ctry = mgCtry[date] || {};

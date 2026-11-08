@@ -780,7 +780,7 @@ function drawPlatforms(rows, r) {
       ${extra}
     </dl>`;
   $('net-taboola').innerHTML = net('Taboola', '--s1', T.tab, T.tabRev, ts, tc, ti, `<div><dt>Vendas · CPA</dt><dd>${fmtInt(ts)} · ${dash(div(T.tab, ts), fmtMoneyS)}</dd></div>`);
-  $('net-mgid').innerHTML = net('MGID', '--s2', T.mg, T.mgRev, ms, mc, mi, `<div><dt>Conversões (MGID)</dt><dd>${fmtInt(mconv)}</dd></div>`);
+  $('net-mgid').innerHTML = net('MGID', '--s2', T.mg, T.mgRev, ms, mc, mi, `<div><dt>Vendas · CPA (est.)</dt><dd>${fmtInt(ms)} · ${dash(div(T.mg, ms), fmtMoneyS)}</dd></div>`);
   const spendAll = T.tab + T.mg;
   const row = (name, color, spend, rev, sales, clicks, imps, ic, bold) => `<tr${bold ? ' style="font-weight:650"' : ''}><td class="l"><span class="tag">${color ? `<i class="dot" style="background:var(${color})"></i>` : ''}${name}</span></td><td>${fmtMoneyS(spend)}</td><td>${fmtPct(div(spend, spendAll) * 100, 0)}</td><td>${fmtMoneyS(rev)}</td><td>${fmtX(div(rev, spend))}</td><td class="${rev - spend >= 0 ? 'pos' : 'neg'}">${fmtMoneyS(rev - spend)}</td><td>${fmtInt(sales)}</td><td>${dash(div(spend, sales), fmtMoneyS)}</td><td>${isFinite(ic) ? fmtInt(ic) : '—'}</td><td>${fmtPct(div(sales, ic) * 100)}</td><td>${dash(div(spend, ic), fmtMoneyS)}</td><td>${fmtInt(clicks)}</td><td>${dash(div(spend, clicks), fmtMoney)}</td><td>${fmtPct(div(clicks, imps) * 100, 2)}</td></tr>`;
   $('t-plat').innerHTML = `<thead><tr><th>Plataforma</th><th>Gasto</th><th>% gasto</th><th>Receita</th><th>ROAS</th><th>Lucro</th><th>Vendas</th><th>CPA</th><th>Checkouts</th><th>Conv. checkout</th><th>Custo/checkout</th><th>Cliques</th><th>CPC</th><th>CTR</th></tr></thead><tbody>
