@@ -36,8 +36,6 @@ jobs:
           TABOOLA_ACCOUNT_ID: ${{ secrets.TABOOLA_ACCOUNT_ID }}
           MGID_CLIENT_ID: ${{ secrets.MGID_CLIENT_ID }}
           MGID_TOKEN: ${{ secrets.MGID_TOKEN }}
-          MGID_EMAIL: ${{ secrets.MGID_EMAIL }}
-          MGID_PASSWORD: ${{ secrets.MGID_PASSWORD }}
           MGID_CURRENCY: USD
         run: node scripts/fetch.mjs
       - uses: actions/configure-pages@v5

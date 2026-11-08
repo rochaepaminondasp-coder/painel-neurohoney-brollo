@@ -231,7 +231,7 @@ footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
       </div>
     </div>
     <div class="card mb">
-      <div class="tablehead"><h3>Países</h3><div class="note">Gasto por país vem do Taboola; a MGID não informa gasto por país.</div></div>
+      <div class="tablehead"><h3>Países</h3><div class="note">Faturamento de todas as fontes; gasto conforme o filtro de plataforma.</div></div>
       <div class="tablescroll"><table id="t-country"></table></div>
     </div>
   </section>
@@ -265,7 +265,7 @@ footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
         <li><b>Receita Taboola</b>: vendas que a Ratoeira atribuiu ao Taboola. <b>Receita MGID</b>: faturamento total − receita Taboola.</li>
         <li><b>Lucro</b> = faturamento − gasto em anúncios (sem taxas, impostos e custo de produto). <b>ROAS</b> = faturamento ÷ gasto. <b>CPA</b> = gasto ÷ vendas front.</li>
         <li><b>Câmbio</b>: o do dia, calculado a partir dos valores em R$ e US$ da Ratoeira.</li>
-        <li>Com um <b>país</b> selecionado: faturamento daquele país (todas as fontes) e gasto do Taboola naquele país.</li>
+        <li>Com um <b>país</b> selecionado: faturamento daquele país (todas as fontes) e gasto das plataformas naquele país.</li>
         <li>Atualização automática a cada 30 minutos. A página recarrega os dados sozinha a cada 10 minutos.</li>
       </ul>
     </div>
@@ -370,7 +370,9 @@ function vals(d) {
   const fx = d.fx || 5.5, k = state.cur === 'BRL' ? fx : 1, meta = state.data.meta;
   const tabCur = state.data.tab_currency || 'BRL';
   const tabToUsd = (x) => (tabCur === 'USD' ? x : x / fx);
-  const mgUsd = meta.mgid_currency === 'BRL' ? (d.mgid_spend || 0) / fx : (d.mgid_spend || 0);
+  const mgCur = state.data.mgid_currency || meta.mgid_currency || 'USD';
+  const mgToUsd = (x) => (mgCur === 'BRL' ? x / fx : x);
+  const mgUsd = mgToUsd(d.mgid_spend || 0);
   const tab = (d.tab_spend_usd || (d.tab_spend_brl || 0) / fx) * k, mg = mgUsd * k;
   const revAll = (d.revenue_usd || 0) * k, tabRev = (d.tab_rev_usd || 0) * k, mgRev = Math.max(0, revAll - tabRev);
   const v = { date: d.date, fx, partial: d.partial, tab, mg, tabRev, mgRev, revAll,
@@ -379,10 +381,10 @@ function vals(d) {
     front: d.sales_front || 0, ups: d.upsells || 0, refunds: (d.refunds_usd || 0) * k, upsRev: (d.upsell_usd || 0) * k };
   const c = state.country;
   if (c !== 'all') {
-    const cr = d.countries?.[c] || [0, 0], tc = d.tab_ctry?.[c] || [0, 0, 0, 0];
+    const cr = d.countries?.[c] || [0, 0], tc = d.tab_ctry?.[c] || [0, 0, 0, 0], mc = d.mgid_ctry?.[c] || [0, 0, 0, 0];
     v.rev = cr[1] * k; v.sales = cr[0]; v.front = NaN; v.ups = NaN;
-    v.tabC = tabToUsd(tc[0]) * k; v.tabClicksC = tc[1]; v.tabImpsC = tc[2];
-    if (state.plat === 'mgid') { v.spend = NaN; } else { v.spend = v.tabC; }
+    v.tabC = tabToUsd(tc[0]) * k; v.mgC = mgToUsd(mc[0]) * k;
+    v.spend = state.plat === 'mgid' ? v.mgC : state.plat === 'taboola' ? v.tabC : v.tabC + v.mgC;
   } else if (state.plat === 'taboola') { v.rev = tabRev; v.spend = tab; v.sales = v.tabSales; v.front = v.tabSales; v.ups = NaN; }
   else if (state.plat === 'mgid') { v.rev = mgRev; v.spend = mg; v.sales = v.mgSales; v.front = v.mgSales; v.ups = NaN; }
   else { v.rev = revAll; v.spend = tab + mg; v.sales = d.sales || 0; }
@@ -413,8 +415,7 @@ function render() {
   // avisos
   const al = [];
   if (meta.errors?.length) al.push(`<details class="alert"><summary>⚠ ${meta.errors.length} aviso(s) na última atualização. Alguns números podem estar incompletos.</summary><ul>${meta.errors.map((e) => `<li><b>${esc(e.src)}</b>: ${esc(e.msg)}</li>`).join('')}</ul></details>`);
-  if (state.country !== 'all' && state.plat === 'mgid') al.push(`<div class="alert">A MGID não informa gasto por país. Com um país selecionado, use "Todas as plataformas" ou "Taboola".</div>`);
-  else if (state.country !== 'all') al.push(`<div class="alert">Filtrando por <b>${flag(state.country)} ${esc(cname(state.country))}</b>: faturamento de todas as fontes nesse país × gasto do Taboola nesse país (a MGID não informa gasto por país).</div>`);
+  if (state.country !== 'all') al.push(`<div class="alert">Filtrando por <b>${flag(state.country)} ${esc(cname(state.country))}</b>: faturamento de todas as fontes nesse país × gasto ${state.plat === 'all' ? 'das plataformas' : state.plat === 'taboola' ? 'do Taboola' : 'da MGID'} nesse país.</div>`);
   $('alerts').innerHTML = al.join('');
 
   const rows = inRange(r).map(vals);
@@ -566,7 +567,7 @@ function drawPlatforms(rows, r) {
 // ---------- CAMPANHAS ----------
 function drawCampaigns() {
   const r = range(), days = inRange(r);
-  const tabCur = state.data.tab_currency || 'BRL', mgCur = state.data.meta.mgid_currency;
+  const tabCur = state.data.tab_currency || 'BRL', mgCur = state.data.mgid_currency || state.data.meta.mgid_currency;
   const agg = {};
   const add = (net, list, d, srcCur) => {
     const fx = d.fx || 5.5;
@@ -602,28 +603,30 @@ function drawCampaigns() {
 // ---------- PAÍSES ----------
 function drawCountries() {
   const r = range(), days = inRange(r);
-  const tabCur = state.data.tab_currency || 'BRL';
+  const tabCur = state.data.tab_currency || 'BRL', mgCur = state.data.mgid_currency || state.data.meta.mgid_currency || 'USD';
   const agg = {};
+  const blank = (cc) => ({ cc, sales: 0, rev: 0, spend: 0, tab: 0, mg: 0, clicks: 0 });
   for (const d of days) {
     const fx = d.fx || 5.5, k = state.cur === 'BRL' ? fx : 1;
-    for (const [cc, [s, rv]] of Object.entries(d.countries || {})) { const a = (agg[cc] ||= { cc, sales: 0, rev: 0, spend: 0, clicks: 0 }); a.sales += s; a.rev += rv * k; }
-    for (const [cc, [sp, cl]] of Object.entries(d.tab_ctry || {})) { const a = (agg[cc] ||= { cc, sales: 0, rev: 0, spend: 0, clicks: 0 }); a.spend += (tabCur === 'USD' ? sp : sp / fx) * k; a.clicks += cl; }
+    for (const [cc, [s, rv]] of Object.entries(d.countries || {})) { const a = (agg[cc] ||= blank(cc)); a.sales += s; a.rev += rv * k; }
+    if (state.plat !== 'mgid') for (const [cc, [sp, cl]] of Object.entries(d.tab_ctry || {})) { const a = (agg[cc] ||= blank(cc)); const v = (tabCur === 'USD' ? sp : sp / fx) * k; a.tab += v; a.spend += v; a.clicks += cl; }
+    if (state.plat !== 'taboola') for (const [cc, [sp, cl]] of Object.entries(d.mgid_ctry || {})) { const a = (agg[cc] ||= blank(cc)); const v = (mgCur === 'BRL' ? sp / fx : sp) * k; a.mg += v; a.spend += v; a.clicks += cl; }
   }
   const rows = Object.values(agg).filter((x) => x.rev > 0 || x.spend > 0).sort((a, b) => b.rev - a.rev || b.spend - a.spend);
   const totRev = sum(rows, 'rev'), totSpend = sum(rows, 'spend'), totSales = sum(rows, 'sales');
   const max = Math.max(...rows.map((x) => x.rev), 1);
   const missing = days.length && days.every((d) => !d.countries);
   $('t-country').innerHTML = !rows.length ? `<tbody><tr><td class="empty">${missing ? 'Os dados por país começam a aparecer após a próxima atualização.' : 'Sem vendas nesse período.'}</td></tr></tbody>` :
-    `<thead><tr><th>País</th><th class="l barcell"></th><th>Faturamento</th><th>% fat.</th><th>Vendas</th><th>Ticket</th><th>Gasto Taboola</th><th>ROAS</th><th>Lucro</th><th>Cliques</th></tr></thead>
-    <tbody>${rows.map((x) => `<tr class="click" data-cc="${esc(x.cc)}"${state.country === x.cc ? ' style="font-weight:650"' : ''}><td>${flag(x.cc)} ${esc(cname(x.cc))}</td><td class="l barcell"><div class="bar" style="width:${(x.rev / max) * 100}%"></div></td><td>${fmtMoneyS(x.rev)}</td><td>${fmtPct(div(x.rev, totRev) * 100)}</td><td>${fmtInt(x.sales)}</td><td>${dash(div(x.rev, x.sales), fmtMoneyS)}</td><td>${x.spend ? fmtMoneyS(x.spend) : '—'}</td><td>${x.spend ? fmtX(div(x.rev, x.spend)) : '—'}</td><td class="${x.rev - x.spend >= 0 ? 'pos' : 'neg'}">${fmtMoneyS(x.rev - x.spend)}</td><td>${x.clicks ? fmtInt(x.clicks) : '—'}</td></tr>`).join('')}</tbody>
-    <tfoot><tr><td>Total</td><td></td><td>${fmtMoneyS(totRev)}</td><td>100%</td><td>${fmtInt(totSales)}</td><td>${dash(div(totRev, totSales), fmtMoneyS)}</td><td>${fmtMoneyS(totSpend)}</td><td>${fmtX(div(totRev, totSpend))}</td><td class="${totRev - totSpend >= 0 ? 'pos' : 'neg'}">${fmtMoneyS(totRev - totSpend)}</td><td>${fmtInt(sum(rows, 'clicks'))}</td></tr></tfoot>`;
+    `<thead><tr><th>País</th><th class="l barcell"></th><th>Faturamento</th><th>% fat.</th><th>Vendas</th><th>Ticket</th><th>Gasto</th><th>Taboola</th><th>MGID</th><th>ROAS</th><th>Lucro</th><th>Cliques</th></tr></thead>
+    <tbody>${rows.map((x) => `<tr class="click" data-cc="${esc(x.cc)}"${state.country === x.cc ? ' style="font-weight:650"' : ''}><td>${flag(x.cc)} ${esc(cname(x.cc))}</td><td class="l barcell"><div class="bar" style="width:${(x.rev / max) * 100}%"></div></td><td>${fmtMoneyS(x.rev)}</td><td>${fmtPct(div(x.rev, totRev) * 100)}</td><td>${fmtInt(x.sales)}</td><td>${dash(div(x.rev, x.sales), fmtMoneyS)}</td><td>${x.spend ? fmtMoneyS(x.spend) : '—'}</td><td class="note">${x.tab ? fmtMoneyS(x.tab) : '—'}</td><td class="note">${x.mg ? fmtMoneyS(x.mg) : '—'}</td><td>${x.spend ? fmtX(div(x.rev, x.spend)) : '—'}</td><td class="${x.rev - x.spend >= 0 ? 'pos' : 'neg'}">${fmtMoneyS(x.rev - x.spend)}</td><td>${x.clicks ? fmtInt(x.clicks) : '—'}</td></tr>`).join('')}</tbody>
+    <tfoot><tr><td>Total</td><td></td><td>${fmtMoneyS(totRev)}</td><td>100%</td><td>${fmtInt(totSales)}</td><td>${dash(div(totRev, totSales), fmtMoneyS)}</td><td>${fmtMoneyS(totSpend)}</td><td class="note">${fmtMoneyS(sum(rows, 'tab'))}</td><td class="note">${fmtMoneyS(sum(rows, 'mg'))}</td><td>${fmtX(div(totRev, totSpend))}</td><td class="${totRev - totSpend >= 0 ? 'pos' : 'neg'}">${fmtMoneyS(totRev - totSpend)}</td><td>${fmtInt(sum(rows, 'clicks'))}</td></tr></tfoot>`;
   $('t-country').querySelectorAll('tr.click').forEach((tr) => (tr.onclick = () => { const cc = tr.dataset.cc; state.country = state.country === cc ? 'all' : cc; $('country').value = state.country; render(); }));
   const top = rows.slice(0, 10);
   $('country-summary').innerHTML = rows.length ? `<div class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
     ${kpi('Países com venda', fmtInt(rows.filter((x) => x.sales > 0).length), '', '', true)}
     ${kpi('Maior mercado', `${flag(rows[0].cc)} ${esc(cname(rows[0].cc))}`, fmtPct(div(rows[0].rev, totRev) * 100) + ' do faturamento', '', true)}
     ${kpi('Top 3', fmtPct(div(sum(rows.slice(0, 3), 'rev'), totRev) * 100, 0), 'do faturamento', '', true)}
-    ${kpi('ROAS (Taboola)', fmtX(div(totRev, totSpend)), 'Faturamento ÷ gasto Taboola', '', true)}</div>` : '<div class="note">Sem dados.</div>';
+    ${kpi('ROAS', fmtX(div(totRev, totSpend)), 'Faturamento ÷ gasto ' + ({ all: 'das plataformas', taboola: 'Taboola', mgid: 'MGID' }[state.plat]), '', true)}</div>` : '<div class="note">Sem dados.</div>';
   const o = baseOpts(); o.indexAxis = 'y'; o.interaction = { mode: 'nearest', intersect: true, axis: 'y' };
   o.scales = { x: { grid: { color: css('--grid') }, border: { display: false }, ticks: { callback: (v) => (Math.abs(v) >= 1000 ? (v / 1000).toLocaleString('pt-BR') + 'k' : v) } }, y: { grid: { display: false }, border: { color: css('--axis') } } };
   o.plugins.tooltip.callbacks.afterLabel = (c) => { const x = top[c.dataIndex]; return ` ${fmtInt(x.sales)} vendas · ROAS ${x.spend ? fmtX(div(x.rev, x.spend)) : '—'}`; };
@@ -652,11 +655,11 @@ function drawSettings() {
   $('sources').innerHTML = `
     <dt>Ratoeira Ads</dt><dd>${st(src.ratoeira !== false && !has('ratoeira'), src.ratoeira === false ? 'Sem conexão' : has('ratoeira') ? 'Conectada, com avisos' : 'Conectada')}</dd>
     <dt>Taboola</dt><dd>${st(src.taboola !== false && !has('taboola'), src.taboola === false ? 'Sem conexão' : has('taboola') ? 'Conectado, com avisos' : 'Conectado')}</dd>
-    <dt>MGID</dt><dd>${st(!!src.mgid && !has('mgid'), src.mgid ? 'Conectada' : 'Sem acesso — verifique MGID_EMAIL/MGID_PASSWORD ou MGID_TOKEN')}</dd>
+    <dt>MGID</dt><dd>${st(!!src.mgid && !has('mgid'), src.mgid ? 'Conectada' : 'Sem acesso — verifique MGID_TOKEN e MGID_CLIENT_ID (ID numérico do painel da MGID)')}</dd>
     <dt>Última atualização</dt><dd>${new Date(meta.updated_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</dd>
     <dt>Histórico guardado</dt><dd>${days.length} dias (${days[0] ? longDate(days[0].date) : '—'} – ${last ? longDate(last.date) : '—'})${days.filter((d) => d.partial).length ? ` · ${days.filter((d) => d.partial).length} dia(s) incompleto(s), completados nas próximas atualizações` : ''}</dd>
     <dt>Câmbio mais recente</dt><dd>US$ 1 = R$ ${(last?.fx || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
-    <dt>Moedas de origem</dt><dd>Taboola em ${esc(state.data.tab_currency || 'BRL')} · MGID em ${esc(meta.mgid_currency)} · vendas em USD</dd>
+    <dt>Moedas de origem</dt><dd>Taboola em ${esc(state.data.tab_currency || 'BRL')} · MGID em ${esc(state.data.mgid_currency || meta.mgid_currency)} · vendas em USD</dd>
     ${errs.length ? `<dt>Avisos</dt><dd><ul>${errs.map((e) => `<li><b>${esc(e.src)}</b>: ${esc(e.msg)}</li>`).join('')}</ul></dd>` : ''}`;
 }
 </script>

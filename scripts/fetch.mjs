@@ -187,96 +187,67 @@ async function taboolaCountryDay(date) {
   return out;
 }
 
-// ---------- MGID API ----------
-const MGID_BASE = 'https://api.mgid.com/v1/goodhits';
-let MGID_TOKEN = String(env.MGID_TOKEN || '').trim();
-let MGID_CLIENT = String(env.MGID_CLIENT_ID || '').trim();
-// Se houver e-mail e senha da MGID, gera um token novo a cada execução (o token da MGID expira).
-async function mgidLogin() {
-  if (!env.MGID_EMAIL || !env.MGID_PASSWORD) return;
-  try {
-    const res = await fetchT('https://api.mgid.com/v1/auth/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' }, body: new URLSearchParams({ email: env.MGID_EMAIL.trim(), password: env.MGID_PASSWORD }) });
-    const text = await res.text();
-    if (!res.ok) { console.log(`[aviso] MGID login HTTP ${res.status} ${text.replace(/\s+/g, ' ').slice(0, 120)}`); return; }
-    let j; try { j = JSON.parse(text); } catch { console.log(`[aviso] MGID login HTTP ${res.status}: resposta não-JSON (${text.length} chars)`); return; }
-    const src = j.data && typeof j.data === 'object' ? { ...j, ...j.data } : j;
-    const tok = src.token ?? src.accessToken ?? src.access_token ?? src.apiToken;
-    if (tok) { MGID_TOKEN = String(tok); console.log('MGID login OK (token novo gerado)'); }
-    else {
-      const msgs = j.errors ? Object.values(j.errors).flat().map(String).join(' | ') : shape(j);
-      console.log(`[aviso] MGID login recusado: ${msgs.slice(0, 200)}`);
-      errors.push({ src: 'mgid-login', msg: msgs.slice(0, 200) });
-    }
-    const idAuth = String(src.idAuth ?? src.id_auth ?? src.clientId ?? src.client_id ?? src.userId ?? '');
-    if (idAuth) { console.log(`MGID_CLIENT_ID confere com a conta do login: ${idAuth === MGID_CLIENT ? 'sim' : 'não — usando o da conta'}`); MGID_CLIENT = idAuth; }
-  } catch (e) { console.log('[aviso] MGID login:', e.message); }
-}
-const mgidModes = {
-  query: (qs) => [{ token: MGID_TOKEN, ...qs }, { Accept: 'application/json' }],
-  bearer: (qs) => [qs, { Accept: 'application/json', Authorization: `Bearer ${MGID_TOKEN}` }],
-  plain: (qs) => [qs, { Accept: 'application/json', Authorization: MGID_TOKEN }],
-};
-let mgidMode = null, mgidDead = null;
-async function mgidGet(path, params = {}) {
-  if (mgidDead) throw new Error(mgidDead);
-  const modes = mgidMode ? [mgidMode] : Object.keys(mgidModes);
-  let res, text, tried = [];
-  for (const m of modes) {
-    const [qs, headers] = mgidModes[m](params);
-    res = await fetchT(`${MGID_BASE}${path}?${new URLSearchParams(qs)}`, { headers });
-    text = await res.text();
-    tried.push(`${m}=${res.status}`);
-    if (res.ok) { if (!mgidMode) { mgidMode = m; console.log(`MGID OK (autenticação: ${m})`); } break; }
-  }
-  if (!res.ok) {
-    const msg = `MGID ${path.split('/').pop()} HTTP ${res.status} [${tried.join(' ')}] ${text.replace(/\s+/g, ' ').slice(0, 160)}`;
-    if (!mgidMode && res.status === 401) mgidDead = msg; // não insiste 30x com token inválido
-    throw new Error(msg);
-  }
-  try { return JSON.parse(text); } catch { throw new Error('MGID resposta não-JSON'); }
-}
-// Descreve só a estrutura (chaves), nunca valores — logs do Actions são públicos.
+// ---------- MGID API v2 (https://api.mgid.com/v2/ads/docs) ----------
+// Autenticação: "Authorization: Bearer <token>". Client ID = ID numérico mostrado no menu da conta no painel da MGID.
+const MGID_TOKEN = String(env.MGID_TOKEN || '').trim();
+const MGID_CLIENT = String(env.MGID_CLIENT_ID || '').trim();
+let mgidOk = false, mgidDead = null, mgidCurrency = null;
 const shape = (o, d = 0) => (o && typeof o === 'object' && d < 3 ? `{${Object.keys(o).slice(0, 6).map((k) => `${/^\d+$/.test(k) ? '<id>' : k}:${shape(o[k], d + 1)}`).join(',')}}` : typeof o);
-
-// Percorre o JSON e devolve {campaignId: {spent, clicks, imps, conv}} somando folhas que tenham "spent".
-function mgidCollect(obj) {
-  const out = {};
-  const walk = (o, cid) => {
-    if (!o || typeof o !== 'object') return;
-    const hasSpent = ['spent', 'spend', 'cost'].some((k) => k in o && typeof o[k] !== 'object');
-    if (hasSpent) {
-      const id = String(o.campaignId ?? o.id ?? cid ?? 'total');
-      const r = (out[id] ||= { spent: 0, clicks: 0, imps: 0, conv: 0 });
-      r.spent += num(o.spent ?? o.spend ?? o.cost);
-      r.clicks += num(o.clicks);
-      r.imps += num(o.imps ?? o.impressions ?? o.hits);
-      r.conv += num(o.conversions ?? o.conversionsCount ?? o.buy ?? o.decision ?? 0);
-      return;
+// nome do país (em inglês) -> código ISO, caso a MGID devolva nomes
+const countryCode = (() => {
+  const map = {};
+  try {
+    const dn = new Intl.DisplayNames(['en'], { type: 'region' });
+    for (let a = 65; a <= 90; a++) for (let b = 65; b <= 90; b++) { const cc = String.fromCharCode(a, b); try { const n = dn.of(cc); if (n && n !== cc) map[n.toLowerCase()] = cc; } catch {} }
+  } catch {}
+  return (v) => { const s = String(v ?? '').trim(); if (/^[A-Za-z]{2}$/.test(s)) return s.toUpperCase(); return map[s.toLowerCase()] || s || '??'; };
+})();
+const sp = (v) => (v && typeof v === 'object' ? (v.currency && (mgidCurrency ||= v.currency), num(v.amount)) : num(v));
+async function mgidReport(dateFrom, dateTo, dimensions, metrics) {
+  if (mgidDead) throw new Error(mgidDead);
+  const rows = [], limit = 1000;
+  for (let offset = 0; offset < 50000; offset += limit) {
+    const qs = new URLSearchParams({ metrics: metrics.join(','), dimensions: dimensions.join(','), limit, offset,
+      'filters[dateRange][dateFrom]': `${dateFrom}T00:00:00-03:00`, 'filters[dateRange][dateTo]': `${dateTo}T23:59:59-03:00` });
+    const res = await fetchT(`https://api.mgid.com/v2/ads/account/${encodeURIComponent(MGID_CLIENT)}/statistics/reports?${qs}`, { headers: { Authorization: `Bearer ${MGID_TOKEN}`, Accept: 'application/json' } });
+    const text = await res.text();
+    if (!res.ok) {
+      let msg = text.replace(/\s+/g, ' ').slice(0, 200);
+      try { const e = JSON.parse(text).error; if (e) msg = `${e.code || ''} ${e.message || ''} ${e.details ? JSON.stringify(e.details) : ''}`.trim().slice(0, 240); } catch {}
+      const m = `MGID relatório HTTP ${res.status}: ${msg}`;
+      if (res.status === 401 || res.status === 403 || res.status === 404) mgidDead = m; // credencial/ID errado: não insiste
+      throw new Error(m);
     }
-    for (const [k, v] of Object.entries(o)) walk(v, /^\d+$/.test(k) ? k : cid);
-  };
-  walk(obj);
+    const j = JSON.parse(text);
+    if (!mgidOk) { mgidOk = true; console.log('MGID OK (API v2)'); }
+    const data = Array.isArray(j.data) ? j.data : [];
+    if (!Array.isArray(j.data)) console.log('[aviso] MGID resposta sem "data":', shape(j));
+    rows.push(...data);
+    if (data.length < limit) break;
+  }
+  return rows;
+}
+// por dia: campanhas e totais
+async function mgidCampaignDays(from, to) {
+  const out = {};
+  for (const r of await mgidReport(from, to, ['day', 'campaignId', 'campaignName'], ['spent', 'clicks', 'impressions', 'conversions', 'revenue'])) {
+    const date = String(r.day || '').slice(0, 10); if (!date) continue;
+    const row = { id: String(r.campaignId ?? ''), name: r.campaignName || `Campanha ${r.campaignId}`, spend: r2(sp(r.spent)), clicks: num(r.clicks), imps: num(r.impressions), conv: num(r.conversions), cval: r2(sp(r.revenue)) };
+    if (row.spend > 0 || row.clicks > 0) (out[date] ||= []).push(row);
+  }
   return out;
 }
-async function mgidStats(start, end) {
-  const j = await mgidGet(`/clients/${MGID_CLIENT}/campaigns-stat`, { dateInterval: 'interval', startDate: start, endDate: end });
-  const c = mgidCollect(j);
-  if (!Object.keys(c).length && !mgidStats.warned) { mgidStats.warned = true; console.log('[aviso] MGID estrutura sem "spent":', shape(j)); }
-  return c;
+// por dia: gasto por país {CC: [gasto, cliques, impressões, conversões]}
+async function mgidCountryDays(from, to) {
+  const out = {};
+  for (const r of await mgidReport(from, to, ['day', 'country'], ['spent', 'clicks', 'impressions', 'conversions'])) {
+    const date = String(r.day || '').slice(0, 10); if (!date) continue;
+    const s = r2(sp(r.spent)); if (!(s > 0 || num(r.clicks) > 0)) continue;
+    const cc = countryCode(r.country), o = (out[date] ||= {}), c = (o[cc] ||= [0, 0, 0, 0]);
+    c[0] = r2(c[0] + s); c[1] += num(r.clicks); c[2] += num(r.impressions); c[3] += num(r.conversions);
+  }
+  return out;
 }
-let mgidNames = {};
-async function mgidLoadNames() {
-  try {
-    const j = await mgidGet(`/clients/${MGID_CLIENT}/campaigns`, { limit: 700 });
-    const walk = (o, cid) => {
-      if (!o || typeof o !== 'object') return;
-      if (typeof o.name === 'string' && (o.id || cid)) { mgidNames[String(o.id ?? cid)] = o.name; return; }
-      for (const [k, v] of Object.entries(o)) walk(v, /^\d+$/.test(k) ? k : cid);
-    };
-    walk(j);
-  } catch (e) { logErr('mgid-nomes', e.message); }
-}
-const sumMgid = (c) => Object.values(c).reduce((a, r) => ({ spent: a.spent + r.spent, clicks: a.clicks + r.clicks, imps: a.imps + r.imps, conv: a.conv + r.conv }), { spent: 0, clicks: 0, imps: 0, conv: 0 });
 
 // ---------- dados anteriores (incremental) ----------
 async function loadPrevious() {
@@ -304,11 +275,11 @@ function mockData() {
     return { date, fx, revenue_usd: rev, revenue_brl: rev * fx, gross_usd: rev, sales, sales_front: Math.round(sales * 0.68), upsells: Math.round(sales * 0.32), upsell_usd: rev * 0.45, refunds_usd: Math.random() * 60, refunds: Math.round(Math.random() * 2), untracked: Math.round(Math.random() * 3),
       tab_spend_brl: tab, tab_spend_usd: tab / fx, tab_rev_usd: tabRev, tab_sales: Math.round(tabRev / 55), tab_clicks: Math.round(tab * 4), tab_imps: Math.round(tab * 2000), tab_checkouts: Math.round(tab / 10), tab_pageviews: Math.round(tab * 7),
       mgid_spend: mg, mgid_clicks: Math.round(mg * 12), mgid_imps: Math.round(mg * 5000), mgid_conv: Math.round(mg / 40),
-      countries, tab_ctry, hours,
+      countries, tab_ctry, hours, mgid_ctry: Object.fromEntries(Object.entries(CC).map(([c, w]) => [c, [r2(mg * w), Math.round(mg * 12 * w), Math.round(mg * 5000 * w), Math.round(mg / 40 * w)]])),
       tab_camps: camps.map((c) => ({ id: c.id, name: c.name, spend: r2(tab * c.w / wsum), clicks: Math.round(tab * 4 * c.w / wsum), imps: Math.round(tab * 2000 * c.w / wsum), conv: Math.round(30 * c.w / wsum), cval: 0 })),
       mgid_camps: mcamps.map((c) => ({ id: c.id, name: c.name, spend: r2(mg * c.w / msum), clicks: Math.round(mg * 12 * c.w / msum), imps: Math.round(mg * 5000 * c.w / msum), conv: Math.round(mg / 40 * c.w / msum) })) };
   });
-  return { days, tab_currency: 'BRL' };
+  return { days, tab_currency: 'BRL', mgid_currency: 'USD' };
 }
 
 // ---------- principal ----------
@@ -317,20 +288,19 @@ async function main() {
   let payload;
   if (MOCK) payload = mockData();
   else {
-    const hasR = !!env.RATOEIRA_MCP_URL, hasT = !!(env.TABOOLA_CLIENT_ID && env.TABOOLA_CLIENT_SECRET && env.TABOOLA_ACCOUNT_ID), hasM = !!((env.MGID_CLIENT_ID && env.MGID_TOKEN) || (env.MGID_EMAIL && env.MGID_PASSWORD));
+    const hasR = !!env.RATOEIRA_MCP_URL, hasT = !!(env.TABOOLA_CLIENT_ID && env.TABOOLA_CLIENT_SECRET && env.TABOOLA_ACCOUNT_ID), hasM = !!(env.MGID_CLIENT_ID && env.MGID_TOKEN);
     const prev = await loadPrevious();
     const prevByDate = Object.fromEntries((prev?.days || []).map((d) => [d.date, d]));
     const window = lastDays(HISTORY_DAYS);
     const refresh = new Set(window.slice(-REFRESH_DAYS));
     const need = (d, k) => refresh.has(d) || !prevByDate[d] || !prevByDate[d][k];
-    const KEYS = [hasR && 'ok_r2', hasR && 'ok_rt', hasT && 'ok_tc', hasT && 'ok_tg', hasM && 'ok_m'].filter(Boolean);
+    const KEYS = [hasR && 'ok_r2', hasR && 'ok_rt', hasT && 'ok_tc', hasT && 'ok_tg', hasM && 'ok_m2'].filter(Boolean);
     const todo = window.filter((d) => KEYS.some((k) => need(d, k)));
     console.log(`Histórico anterior: ${prev ? Object.keys(prevByDate).length + ' dias' : 'nenhum'}. Atualizando ${todo.length} dia(s).`);
 
     let mcp = null;
     if (hasR) { try { mcp = new Mcp(env.RATOEIRA_MCP_URL); await mcp.init(); console.log('Ratoeira OK, tools:', mcp.tools.length); } catch (e) { logErr('ratoeira', e.message); mcp = null; } }
     if (hasT) { try { await taboolaAuth(); console.log('Taboola OK'); await taboolaResolveAccount(); } catch (e) { logErr('taboola', e.message); } }
-    if (hasM) { await mgidLogin(); await mgidLoadNames(); }
 
     // Taboola: diário + campanhas por dia (uma chamada cada para o intervalo)
     let tabDaily = {}, tabCamps = null;
@@ -341,6 +311,14 @@ async function main() {
     }
     if (taboolaToken && tcDays.length) {
       try { tabCamps = await taboolaCampaignDays(tcDays[0], tcDays.at(-1)); } catch (e) { logErr('taboola-campanhas', e.message); }
+    }
+
+    // MGID: duas chamadas para o intervalo inteiro (campanhas por dia e países por dia)
+    let mgCamps = null, mgCtry = null;
+    const mDays = todo.filter((d) => need(d, 'ok_m2'));
+    if (hasM && mDays.length) {
+      try { mgCamps = await mgidCampaignDays(mDays[0], mDays.at(-1)); } catch (e) { logErr('mgid', e.message); }
+      if (mgCamps) { try { mgCtry = await mgidCountryDays(mDays[0], mDays.at(-1)); } catch (e) { logErr('mgid-paises', e.message); } }
     }
 
     const byDate = { ...prevByDate };
@@ -365,13 +343,12 @@ async function main() {
       if (!stopped && taboolaToken && need(date, 'ok_tg')) {
         try { d.tab_ctry = await taboolaCountryDay(date); d.ok_tg = true; } catch (e) { d.ok_tg = false; if (tgErr++ < 2) logErr(`taboola-paises ${date}`, e.message); }
       }
-      if (!stopped && hasM && need(date, 'ok_m')) {
-        try {
-          const c = await withRetry(() => mgidStats(date, date)); const s = sumMgid(c);
-          d.mgid_spend = s.spent; d.mgid_clicks = s.clicks; d.mgid_imps = s.imps; d.mgid_conv = s.conv; d.ok_m = true;
-          d.mgid_camps = Object.entries(c).filter(([id]) => id !== 'total' || Object.keys(c).length === 1)
-            .map(([id, r]) => ({ id, name: mgidNames[id] || `Campanha ${id}`, spend: r2(r.spent), clicks: r.clicks, imps: r.imps, conv: r.conv })).filter((r) => r.spend > 0 || r.clicks > 0);
-        } catch (e) { d.ok_m = false; if (!errors.some((x) => x.src.startsWith('mgid '))) logErr(`mgid ${date}`, e.message); }
+      if (mgCamps && need(date, 'ok_m2')) {
+        const list = mgCamps[date] || [];
+        d.mgid_camps = list; d.ok_m2 = true;
+        d.mgid_spend = r2(list.reduce((a, c) => a + c.spend, 0)); d.mgid_clicks = list.reduce((a, c) => a + c.clicks, 0);
+        d.mgid_imps = list.reduce((a, c) => a + c.imps, 0); d.mgid_conv = list.reduce((a, c) => a + c.conv, 0);
+        if (mgCtry) d.mgid_ctry = mgCtry[date] || {};
       }
       // câmbio BRL por USD, derivado dos próprios números da Ratoeira
       d.fx = d.revenue_usd > 0 ? d.revenue_brl / d.revenue_usd : d.r_cost_usd > 0 ? d.r_cost_brl / d.r_cost_usd : d.tab_spend_usd > 0 ? d.tab_spend_brl / d.tab_spend_usd : old.fx || 0;
@@ -383,7 +360,7 @@ async function main() {
     for (let i = 0; i < days.length; i++) if (!days[i].fx) days[i].fx = days[i - 1]?.fx || days.find((x) => x.fx)?.fx || 5.5;
     const pending = days.filter((d) => d.partial && window.includes(d.date)).length;
     if (pending) console.log(`Dias ainda incompletos: ${pending}`);
-    payload = { days, tab_currency: taboolaCurrency || prev?.tab_currency || 'BRL', sources: { ratoeira: !!mcp, taboola: !!taboolaToken, mgid: !!mgidMode } };
+    payload = { days, tab_currency: taboolaCurrency || prev?.tab_currency || 'BRL', mgid_currency: mgidCurrency || prev?.mgid_currency || MGID_CURRENCY, sources: { ratoeira: !!mcp, taboola: !!taboolaToken, mgid: mgidOk } };
   }
 
   payload.meta = { updated_at: new Date().toISOString(), today, tz: TZ, mgid_currency: MGID_CURRENCY, errors, mock: MOCK, history_days: HISTORY_DAYS };
