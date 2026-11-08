@@ -37,6 +37,7 @@ jobs:
           MGID_CLIENT_ID: ${{ secrets.MGID_CLIENT_ID }}
           MGID_TOKEN: ${{ secrets.MGID_TOKEN }}
           MGID_CURRENCY: USD
+          START_DATE: "2026-11-06"   # início da operação; dados anteriores são ignorados
         run: node scripts/fetch.mjs
       - uses: actions/configure-pages@v5
         with:

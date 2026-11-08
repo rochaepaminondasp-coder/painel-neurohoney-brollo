@@ -10,6 +10,7 @@ const HISTORY_DAYS = Number(env.HISTORY_DAYS || 90);
 const DEADLINE = Date.now() + Number(env.MAX_MINUTES || 40) * 60000; // para antes do timeout; o resto fica para a próxima execução
 const REFRESH_DAYS = Number(env.REFRESH_DAYS || 3); // últimos N dias sempre recalculados
 const MGID_CURRENCY = (env.MGID_CURRENCY || 'USD').toUpperCase();
+const START_DATE = /^\d{4}-\d{2}-\d{2}$/.test(env.START_DATE || '') ? env.START_DATE : ''; // início da operação: nada antes disso entra no painel
 const PAGES_URL = env.PAGES_URL || 'https://rochaepaminondasp-coder.github.io/painel-neurohoney-brollo/';
 const OUT = '_site';
 
@@ -297,7 +298,8 @@ async function main() {
     const hasR = !!env.RATOEIRA_MCP_URL, hasT = !!(env.TABOOLA_CLIENT_ID && env.TABOOLA_CLIENT_SECRET && env.TABOOLA_ACCOUNT_ID), hasM = !!(env.MGID_CLIENT_ID && env.MGID_TOKEN);
     const prev = await loadPrevious();
     const prevByDate = Object.fromEntries((prev?.days || []).map((d) => [d.date, d]));
-    const window = lastDays(HISTORY_DAYS);
+    const window = lastDays(HISTORY_DAYS).filter((d) => !START_DATE || d >= START_DATE);
+    if (START_DATE) console.log(`Início da operação: ${START_DATE}`);
     const refresh = new Set(window.slice(-REFRESH_DAYS));
     const need = (d, k) => refresh.has(d) || !prevByDate[d] || !prevByDate[d][k];
     const KEYS = [hasR && 'ok_r2', hasR && 'ok_rt2', hasT && 'ok_tc', hasT && 'ok_tg', hasM && 'ok_m2'].filter(Boolean);
@@ -363,14 +365,14 @@ async function main() {
       byDate[date] = d;
     }
     // mantém todo o histórico (aba "Tudo"), ordenado
-    const days = Object.values(byDate).filter((d) => d?.date).sort((a, b) => a.date.localeCompare(b.date));
+    const days = Object.values(byDate).filter((d) => d?.date && (!START_DATE || d.date >= START_DATE)).sort((a, b) => a.date.localeCompare(b.date));
     for (let i = 0; i < days.length; i++) if (!days[i].fx) days[i].fx = days[i - 1]?.fx || days.find((x) => x.fx)?.fx || 5.5;
     const pending = days.filter((d) => d.partial && window.includes(d.date)).length;
     if (pending) console.log(`Dias ainda incompletos: ${pending}`);
     payload = { days, tab_currency: taboolaCurrency || prev?.tab_currency || 'BRL', mgid_currency: mgidCurrency || prev?.mgid_currency || MGID_CURRENCY, sources: { ratoeira: !!mcp, taboola: !!taboolaToken, mgid: mgidOk } };
   }
 
-  payload.meta = { updated_at: new Date().toISOString(), today, tz: TZ, mgid_currency: MGID_CURRENCY, errors, mock: MOCK, history_days: HISTORY_DAYS };
+  payload.meta = { updated_at: new Date().toISOString(), today, tz: TZ, mgid_currency: MGID_CURRENCY, errors, mock: MOCK, history_days: HISTORY_DAYS, start_date: START_DATE || null };
   await mkdir(OUT, { recursive: true });
   await cp('public', OUT, { recursive: true });
   await writeFile(`${OUT}/data.json`, JSON.stringify(payload));

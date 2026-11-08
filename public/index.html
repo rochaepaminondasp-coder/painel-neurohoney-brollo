@@ -657,6 +657,7 @@ function drawSettings() {
     <dt>Taboola</dt><dd>${st(src.taboola !== false && !has('taboola'), src.taboola === false ? 'Sem conexão' : has('taboola') ? 'Conectado, com avisos' : 'Conectado')}</dd>
     <dt>MGID</dt><dd>${st(!!src.mgid && !has('mgid'), src.mgid ? 'Conectada' : 'Sem acesso — verifique MGID_TOKEN e MGID_CLIENT_ID (ID numérico do painel da MGID)')}</dd>
     <dt>Última atualização</dt><dd>${new Date(meta.updated_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</dd>
+    ${meta.start_date ? `<dt>Início da operação</dt><dd>${longDate(meta.start_date)} (dados anteriores são ignorados)</dd>` : ''}
     <dt>Histórico guardado</dt><dd>${days.length} dias (${days[0] ? longDate(days[0].date) : '—'} – ${last ? longDate(last.date) : '—'})${days.filter((d) => d.partial).length ? ` · ${days.filter((d) => d.partial).length} dia(s) incompleto(s), completados nas próximas atualizações` : ''}</dd>
     <dt>Câmbio mais recente</dt><dd>US$ 1 = R$ ${(last?.fx || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
     <dt>Moedas de origem</dt><dd>Taboola em ${esc(state.data.tab_currency || 'BRL')} · MGID em ${esc(state.data.mgid_currency || meta.mgid_currency)} · vendas em USD</dd>
