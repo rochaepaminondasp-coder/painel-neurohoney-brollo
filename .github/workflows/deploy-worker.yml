@@ -1,0 +1,79 @@
+name: Publicar worker ao vivo (Cloudflare)
+
+on:
+  push:
+    branches: [main]
+    paths: ['worker/**', '.github/workflows/deploy-worker.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Conferir secrets da Cloudflare
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Crie os secrets CLOUDFLARE_API_TOKEN e CLOUDFLARE_ACCOUNT_ID no repositório."
+            exit 1
+          fi
+      - name: Preparar KV e endereço
+        id: setup
+        run: node worker/setup.mjs
+      - name: Publicar worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          command: deploy
+          secrets: |
+            RATOEIRA_MCP_URL
+            TABOOLA_CLIENT_ID
+            TABOOLA_CLIENT_SECRET
+            TABOOLA_ACCOUNT_ID
+            MGID_CLIENT_ID
+            MGID_TOKEN
+            GH_DISPATCH_TOKEN
+        env:
+          RATOEIRA_MCP_URL: ${{ secrets.RATOEIRA_MCP_URL }}
+          TABOOLA_CLIENT_ID: ${{ secrets.TABOOLA_CLIENT_ID }}
+          TABOOLA_CLIENT_SECRET: ${{ secrets.TABOOLA_CLIENT_SECRET }}
+          TABOOLA_ACCOUNT_ID: ${{ secrets.TABOOLA_ACCOUNT_ID }}
+          MGID_CLIENT_ID: ${{ secrets.MGID_CLIENT_ID }}
+          MGID_TOKEN: ${{ secrets.MGID_TOKEN }}
+          GH_DISPATCH_TOKEN: ${{ secrets.GH_DISPATCH_TOKEN }}
+      - name: Testar o worker
+        if: steps.setup.outputs.url != ''
+        run: |
+          sleep 5
+          code=$(curl -s -o /tmp/live.json -w "%{http_code}" "${{ steps.setup.outputs.url }}/live")
+          echo "GET /live -> HTTP $code"
+          node -e 'const d=require("/tmp/live.json"); console.log("data:", d.date, "| erros:", JSON.stringify(d.errors||d.error||[]), "| campos:", Object.keys(d.day||{}).length)'
+      - name: Ligar o painel ao worker
+        if: steps.setup.outputs.url != ''
+        run: |
+          echo "{\"url\": \"${{ steps.setup.outputs.url }}\"}" > public/live.json
+          git checkout -- worker/wrangler.toml
+          if ! git diff --quiet -- public/live.json || [ -n "$(git status --porcelain public/live.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add public/live.json
+            git commit -m "Liga o painel ao worker ao vivo"
+            git push
+          fi
+          # publica o painel com o endereço novo
+          gh workflow run atualizar.yml --ref main
+        env:
+          GH_TOKEN: ${{ github.token }}

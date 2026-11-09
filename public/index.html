@@ -341,7 +341,7 @@ footer { color: var(--muted); font-size: 12px; margin-top: 16px; }
         <li><b>Initiate checkouts</b>: registrados pela Tag da Ratoeira (total e por rede). <b>Conversão do checkout</b> = vendas front ÷ checkouts. <b>Checkout por clique</b> = checkouts ÷ cliques nos anúncios.</li>
         <li><b>Câmbio</b>: o do dia, calculado a partir dos valores em R$ e US$ da Ratoeira.</li>
         <li>Com um <b>país</b> selecionado: faturamento daquele país (todas as fontes) e gasto das plataformas naquele país.</li>
-        <li>Atualização automática a cada 30 minutos. A página recarrega os dados sozinha a cada 10 minutos.</li>
+        <li><b>Hoje</b>: atualizado a cada 4 minutos por um worker na Cloudflare (Ratoeira sem cache, Taboola e MGID). O histórico, campanhas e países vêm da atualização completa no GitHub.</li>
       </ul>
     </div>
   </section>
@@ -373,14 +373,45 @@ async function load() {
     const res = await fetch('data.json?t=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) throw new Error('Os dados ainda não foram publicados.');
     state.data = await res.json();
+    mergeLive();
     buildCountryOptions();
     render();
   } catch (e) {
     if (!state.data) { $('updated').textContent = ''; $('alerts').innerHTML = `<div class="alert">${esc(e.message || 'Erro ao carregar os dados.')}</div>`; }
   }
 }
-load();
+load().then(loadLive);
 setInterval(load, 10 * 60 * 1000);
+setInterval(loadLive, 4 * 60 * 1000);
+
+// ---------- ao vivo (Cloudflare Worker): números de hoje a cada 4 minutos ----------
+let liveUrl = null;
+async function loadLive() {
+  try {
+    if (!liveUrl) {
+      const r = await fetch('live.json?t=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) return;
+      liveUrl = (await r.json()).url;
+      if (!liveUrl) return;
+    }
+    const r = await fetch(liveUrl + '/live?t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) return;
+    const j = await r.json();
+    if (!j?.day) return;
+    state.live = j;
+    if (state.data) { mergeLive(); render(); }
+  } catch {}
+}
+function mergeLive() {
+  const j = state.live, data = state.data;
+  if (!j?.day || !data) return;
+  if (data.meta.start_date && j.date < data.meta.start_date) return;
+  let d = data.days.find((x) => x.date === j.date);
+  if (!d) { d = { date: j.date }; data.days.push(d); data.days.sort((a, b) => a.date.localeCompare(b.date)); }
+  for (const [k, v] of Object.entries(j.day)) if (v !== undefined && v !== null) d[k] = v;
+  if (!d.fx) d.fx = data.days.filter((x) => x.fx).at(-1)?.fx || 5.5;
+  if (j.date > data.meta.today) data.meta.today = j.date;
+}
 
 // ---------- países ----------
 const regionNames = (() => { try { return new Intl.DisplayNames(['pt-BR'], { type: 'region' }); } catch { return null; } })();
@@ -489,7 +520,8 @@ function render() {
   document.querySelectorAll('#tabs a').forEach((a) => a.setAttribute('aria-current', a.dataset.tab === state.tab ? 'page' : 'false'));
   document.querySelectorAll('[data-panel]').forEach((p) => (p.hidden = p.dataset.panel !== state.tab));
   const meta = state.data.meta;
-  $('updated').textContent = `Atualizado em ${new Date(meta.updated_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' })} (Brasília)` + (meta.mock ? ' · DADOS FICTÍCIOS' : '');
+  const hhmm = (iso) => new Date(iso).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' });
+  $('updated').innerHTML = (state.live?.updated_at ? `<span style="color:var(--good)">●</span> Ao vivo: hoje atualizado às ${hhmm(state.live.updated_at)} · ` : '') + `Histórico atualizado em ${new Date(meta.updated_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' })}` + (meta.mock ? ' · DADOS FICTÍCIOS' : '');
 
   $('customrange').hidden = state.period !== 'custom';
   const r = range();

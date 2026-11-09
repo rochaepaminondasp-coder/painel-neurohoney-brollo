@@ -1,0 +1,13 @@
+name = "painel-neurohoney-live"
+main = "index.js"
+compatibility_date = "2024-09-23"
+workers_dev = true
+
+# busca os números de hoje a cada 4 minutos
+[triggers]
+crons = ["*/4 * * * *"]
+
+# o id é preenchido pelo workflow deploy-worker.yml (worker/setup.mjs)
+[[kv_namespaces]]
+binding = "LIVE"
+id = "KV_ID"

@@ -20,3 +20,13 @@ Opcionais (variáveis de ambiente no workflow): `DAILY_GOAL` (meta de lucro diá
 ```bash
 node scripts/fetch.mjs --mock && npx serve _site
 ```
+
+## Ao vivo (Cloudflare Worker, a cada 4 minutos)
+O agendamento do GitHub Actions atrasa e pula execuções, então os números de **hoje** vêm de um worker na Cloudflare
+(`worker/`), que roda a cada 4 minutos e guarda o resultado num KV. O painel lê `GET <worker>/live` a cada 4 minutos.
+
+- Publicação: workflow `deploy-worker.yml` (roda quando `worker/` muda ou manualmente). Precisa dos secrets
+  `CLOUDFLARE_API_TOKEN` (modelo "Edit Cloudflare Workers") e `CLOUDFLARE_ACCOUNT_ID`; reaproveita os demais secrets.
+- O endereço do worker fica em `public/live.json` (gravado pelo próprio workflow).
+- Opcional: `GH_DISPATCH_TOKEN` (token do GitHub com permissão "Actions: read and write" neste repositório) faz o worker
+  disparar a atualização completa a cada 30 minutos.
