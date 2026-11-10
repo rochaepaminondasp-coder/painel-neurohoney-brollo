@@ -616,8 +616,10 @@ function render() {
   $('greet').textContent = (h >= 5 && h < 12 ? 'Bom dia' : h >= 12 && h < 18 ? 'Boa tarde' : 'Boa noite') + ' 👋';
   const opDays = meta.start_date ? Math.round((dObj(today) - dObj(meta.start_date)) / 864e5) + 1 : state.data.days.length;
   $('greetSub').innerHTML = `Hoje é ${dLong(today)} · <b>${opDays} dia${opDays === 1 ? '' : 's'} de operação</b>`;
-  const liveAt = state.live?.updated_at || meta.updated_at, fresh = Date.now() - Date.parse(liveAt) < 40 * 60000;
-  for (const id of ['live', 'live2']) { $(id).className = 'live' + (fresh ? '' : ' off'); $(id).querySelector('span').textContent = (fresh ? 'Ao vivo · ' : 'Atualizado · ') + hhmm(liveAt); }
+  // "Ao vivo" só quando o worker da Cloudflare respondeu nos últimos 10 minutos
+  const liveOn = state.live?.updated_at && Date.now() - Date.parse(state.live.updated_at) < 10 * 60000;
+  const at0 = liveOn ? state.live.updated_at : meta.updated_at;
+  for (const id of ['live', 'live2']) { $(id).className = 'live' + (liveOn ? '' : ' off'); $(id).querySelector('span').textContent = (liveOn ? 'Ao vivo · ' : 'Atualizado · ') + hhmm(at0); }
   $('shareUrl').value = location.href.split('#')[0];
 
   // período personalizado
