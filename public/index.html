@@ -390,6 +390,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 1
         <li><b>Receita Taboola</b>: vendas que a Ratoeira atribuiu ao Taboola. <b>Receita MGID</b>: faturamento total − receita Taboola (inclui vendas sem origem identificada).</li>
         <li><b>Lucro líquido</b> = faturamento − investimento em anúncios. <b>ROAS</b> = faturamento ÷ investimento. <b>CPA</b> = investimento ÷ vendas front. <b>EPC</b> = faturamento ÷ cliques.</li>
         <li><b>≈ estimado</b>: receita e vendas por campanha (e por plataforma em cada país) divididas proporcionalmente às compras que cada rede reporta (ou aos cliques, quando não há compra).</li>
+        <li><b>Hoje</b>: atualizado a cada 4 minutos (vendas da Ratoeira sem cache, gasto do Taboola e da MGID). Histórico, campanhas e países: atualização completa a cada ~30 minutos.</li>
         <li><b>Câmbio</b>: o do dia, calculado a partir dos valores em R$ e US$ da Ratoeira.</li>
       </ul></div>
   </section>
@@ -433,15 +434,21 @@ load().then(loadLive);
 setInterval(load, 10 * 60 * 1000);
 setInterval(loadLive, 4 * 60 * 1000);
 
-// ao vivo (Cloudflare Worker): números de hoje a cada 4 minutos, quando configurado
+// ao vivo: números de hoje a cada 4 minutos.
+// Fonte 1: worker da Cloudflare (se publicado). Fonte 2: arquivo live.json do branch "live",
+// gravado a cada 4 minutos pelo ciclo do GitHub Actions (ao-vivo.yml).
+const LIVE_GH = 'https://api.github.com/repos/rochaepaminondasp-coder/painel-neurohoney-brollo/contents/live.json?ref=live';
+const LIVE_RAW = 'https://raw.githubusercontent.com/rochaepaminondasp-coder/painel-neurohoney-brollo/live/live.json';
 let liveUrl = null;
+async function fetchJson(url, opts) { try { const r = await fetch(url, { cache: 'no-store', ...opts }); return r.ok ? await r.json() : null; } catch { return null; } }
 async function loadLive() {
   try {
-    if (!liveUrl) { const r = await fetch('live.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return; liveUrl = (await r.json()).url; if (!liveUrl) return; }
-    const r = await fetch(liveUrl + '/live?t=' + Date.now(), { cache: 'no-store' });
-    if (!r.ok) return;
-    const j = await r.json();
+    if (liveUrl === null) liveUrl = (await fetchJson('live.json?t=' + Date.now()))?.url || '';
+    let j = liveUrl ? await fetchJson(liveUrl + '/live?t=' + Date.now()) : null;
+    if (!j?.day) j = await fetchJson(LIVE_GH, { headers: { Accept: 'application/vnd.github.raw+json' } });
+    if (!j?.day) j = await fetchJson(LIVE_RAW + '?t=' + Date.now());
     if (!j?.day) return;
+    if (state.live?.updated_at && Date.parse(j.updated_at) < Date.parse(state.live.updated_at)) return;
     state.live = j;
     if (state.data) { mergeLive(); render(); }
   } catch {}
@@ -1052,7 +1059,7 @@ function renderSettings() {
     <dt>Ratoeira Ads</dt><dd>${st(src.ratoeira !== false && !has('ratoeira'), src.ratoeira === false ? 'Sem conexão' : has('ratoeira') ? 'Conectada, com avisos' : 'Conectada')}</dd>
     <dt>Taboola</dt><dd>${st(src.taboola !== false && !has('taboola'), src.taboola === false ? 'Sem conexão' : has('taboola') ? 'Conectado, com avisos' : 'Conectado')}</dd>
     <dt>MGID</dt><dd>${st(!!src.mgid && !has('mgid'), src.mgid ? 'Conectada' : 'Sem acesso — verifique MGID_TOKEN e MGID_CLIENT_ID')}</dd>
-    <dt>Ao vivo (hoje)</dt><dd>${state.live ? st(true, 'Ativo · atualizado às ' + hhmm(state.live.updated_at)) : '<span class="note">Desligado — o worker da Cloudflare ainda não foi publicado. Hoje atualiza junto com o histórico.</span>'}</dd>
+    <dt>Ao vivo (hoje)</dt><dd>${state.live ? st(Date.now() - Date.parse(state.live.updated_at) < 10 * 60000, 'Vendas de hoje atualizadas às ' + hhmm(state.live.updated_at) + ' · a cada 4 minutos') : '<span class="note">Aguardando o primeiro ciclo ao vivo.</span>'}</dd>
     <dt>Última atualização completa</dt><dd>${new Date(meta.updated_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</dd>
     <dt>Histórico guardado</dt><dd>${days.length} dias${days.filter((d) => d.partial).length ? ` · ${days.filter((d) => d.partial).length} incompleto(s)` : ''}</dd>
     ${errs.length ? `<dt>Avisos</dt><dd><ul>${errs.map((e) => `<li><b>${esc(e.src)}</b>: ${esc(e.msg)}</li>`).join('')}</ul></dd>` : ''}`;

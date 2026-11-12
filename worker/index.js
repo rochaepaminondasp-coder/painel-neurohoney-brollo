@@ -186,3 +186,6 @@ async function mgidToday(env, date) {
   const s = rows.reduce((a, r) => ({ spend: a.spend + sp(r.spent), clicks: a.clicks + num(r.clicks), imps: a.imps + num(r.impressions), conv: a.conv + num(r.conversionsBuy) }), { spend: 0, clicks: 0, imps: 0, conv: 0 });
   return { mgid_spend: r2(s.spend), mgid_clicks: s.clicks, mgid_imps: s.imps, mgid_conv: s.conv };
 }
+
+// usado também pelo ciclo ao vivo no GitHub Actions (scripts/live.mjs)
+export { collect };

@@ -1,0 +1,42 @@
+name: Ao vivo (vendas de hoje a cada 4 min)
+
+# Fica rodando em ciclo (~5h40 por execução) e religa a si mesmo no fim.
+# O agendamento abaixo só serve para religar o ciclo se ele parar por algum motivo.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 * * * *'
+  push:
+    branches: [main]
+    paths: ['scripts/live.mjs', 'worker/index.js', '.github/workflows/ao-vivo.yml']
+
+permissions:
+  contents: write
+  actions: write
+
+# um ciclo por vez; um novo disparo espera o atual terminar
+concurrency:
+  group: ao-vivo
+  cancel-in-progress: false
+
+jobs:
+  ciclo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Buscar vendas de hoje a cada 4 minutos
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RATOEIRA_MCP_URL: ${{ secrets.RATOEIRA_MCP_URL }}
+          TABOOLA_CLIENT_ID: ${{ secrets.TABOOLA_CLIENT_ID }}
+          TABOOLA_CLIENT_SECRET: ${{ secrets.TABOOLA_CLIENT_SECRET }}
+          TABOOLA_ACCOUNT_ID: ${{ secrets.TABOOLA_ACCOUNT_ID }}
+          MGID_CLIENT_ID: ${{ secrets.MGID_CLIENT_ID }}
+          MGID_TOKEN: ${{ secrets.MGID_TOKEN }}
+          LOOP_MINUTES: '340'
+          STEP_MINUTES: '4'
+        run: node scripts/live.mjs
