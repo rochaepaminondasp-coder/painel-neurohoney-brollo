@@ -425,6 +425,7 @@ async function load() {
     const res = await fetch('data.json?t=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) throw new Error('Os dados ainda não foram publicados.');
     state.data = await res.json();
+    try { const a = await fetch('ajustes.json?t=' + Date.now(), { cache: 'no-store' }); state.adj = a.ok ? await a.json() : {}; } catch { state.adj = {}; }
     mergeLive(); buildCountryOptions(); render();
   } catch (e) {
     if (!state.data) $('banner').innerHTML = `<div class="banner warn"><span class="ic">!</span><div><b>Sem dados</b><span>${esc(e.message || 'Erro ao carregar os dados.')}</span></div></div>`;
@@ -433,6 +434,9 @@ async function load() {
 load().then(loadLive);
 setInterval(load, 10 * 60 * 1000);
 setInterval(loadLive, 4 * 60 * 1000);
+
+// correções manuais (public/ajustes.json): ex. venda registrada como front que era upsell
+const adj = (d) => (state.adj && state.adj[d.date]) || {};
 
 // ao vivo: números de hoje a cada 4 minutos.
 // Fonte 1: worker da Cloudflare (se publicado). Fonte 2: arquivo live.json do branch "live",
@@ -547,7 +551,7 @@ function vals(d) {
     tabSales: d.tab_sales || 0, mgSales: Math.max(0, (d.sales || 0) - (d.tab_sales || 0)),
     tabClicks: d.tab_clicks || 0, tabImps: d.tab_imps || 0, mgClicks: d.mgid_clicks || 0, mgImps: d.mgid_imps || 0,
     tabPv: n(d.tab_pageviews), icTab: n(d.ic_tab ?? d.tab_checkouts), icMg: n(d.ic_mgid),
-    front: d.sales_front || 0, ups: d.upsells || 0, refunds: c.usd(d.refunds_usd || 0), upsRev: c.usd(d.upsell_usd || 0), pv: NaN };
+    front: Math.max(0, (d.sales_front || 0) + (adj(d).front || 0)), ups: Math.max(0, (d.upsells || 0) + (adj(d).upsells || 0)), refunds: c.usd(d.refunds_usd || 0), upsRev: c.usd((d.upsell_usd || 0) + (adj(d).upsell_usd || 0)), pv: NaN };
   const cc = state.country;
   if (cc !== 'all') {
     const cr = d.countries?.[cc] || [0, 0], tc = d.tab_ctry?.[cc] || [0, 0, 0, 0], mc = d.mgid_ctry?.[cc] || [0, 0, 0, 0];
@@ -1039,7 +1043,7 @@ function dayDetail(date) {
 function exportCsv() {
   if (!state.data) return;
   const head = ['data', 'investimento_taboola', 'investimento_mgid', 'investimento_total', 'cliques', 'impressoes', 'checkouts', 'vendas', 'vendas_front', 'upsells', 'faturamento', 'lucro', 'roas', 'moeda'];
-  const lines = state.data.days.map((d) => { const v = vals(d); return [d.date, v.tab.toFixed(2), v.mg.toFixed(2), (v.tab + v.mg).toFixed(2), v.tabClicks + v.mgClicks, v.tabImps + v.mgImps, d.ic ?? '', d.sales || 0, d.sales_front || 0, d.upsells || 0, v.revAll.toFixed(2), (v.revAll - v.tab - v.mg).toFixed(2), div(v.revAll, v.tab + v.mg).toFixed(2), state.cur].join(';'); });
+  const lines = state.data.days.map((d) => { const v = vals(d); return [d.date, v.tab.toFixed(2), v.mg.toFixed(2), (v.tab + v.mg).toFixed(2), v.tabClicks + v.mgClicks, v.tabImps + v.mgImps, d.ic ?? '', d.sales || 0, v.front, v.ups, v.revAll.toFixed(2), (v.revAll - v.tab - v.mg).toFixed(2), div(v.revAll, v.tab + v.mg).toFixed(2), state.cur].join(';'); });
   const blob = new Blob(['﻿' + [head.join(';'), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `painel-neurohoney-${state.data.meta.today}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }

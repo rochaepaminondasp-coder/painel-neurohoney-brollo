@@ -1,9 +1,7 @@
 name: Publicar worker ao vivo (Cloudflare)
 
+# roda só manualmente, depois de criar CLOUDFLARE_API_TOKEN e CLOUDFLARE_ACCOUNT_ID
 on:
-  push:
-    branches: [main]
-    paths: ['worker/**', '.github/workflows/deploy-worker.yml']
   workflow_dispatch:
 
 permissions:

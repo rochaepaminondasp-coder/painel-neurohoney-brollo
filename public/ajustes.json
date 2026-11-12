@@ -1,0 +1,4 @@
+{
+  "_como_usar": "Correções manuais aplicadas por cima dos dados da Ratoeira, por dia (YYYY-MM-DD). front/upsells: quantas vendas somar ou tirar de cada tipo; upsell_usd: valor em US$ que passa a contar como upsell.",
+  "2026-11-11": { "front": -1, "upsells": 1, "upsell_usd": 57, "nota": "Venda de US$ 57 era upsell; a Ratoeira registrou como front." }
+}
