@@ -36,6 +36,9 @@ jobs:
           TABOOLA_ACCOUNT_ID: ${{ secrets.TABOOLA_ACCOUNT_ID }}
           MGID_CLIENT_ID: ${{ secrets.MGID_CLIENT_ID }}
           MGID_TOKEN: ${{ secrets.MGID_TOKEN }}
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          META_AD_ACCOUNT_ID: ${{ secrets.META_AD_ACCOUNT_ID }}
+          PERFECTPAY_API_KEY: ${{ secrets.PERFECTPAY_API_KEY }}
           MGID_CURRENCY: USD
           START_DATE: "2026-11-06"   # início da operação; dados anteriores são ignorados
           DAILY_GOAL: "3000"         # meta de lucro diário em R$

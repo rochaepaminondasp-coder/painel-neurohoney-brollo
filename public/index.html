@@ -13,7 +13,7 @@
   --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #f1f0ec; --hover: rgba(11,11,11,0.04);
   --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
   --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
-  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --rev: #0b0b0b; --seq: #2a78d6;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #6250d6; --rev: #0b0b0b; --seq: #2a78d6;
   --good: #006300; --good-fill: #0ca30c; --bad: #d03b3b; --warn: #fab219;
   --accent: #c98500; --brand: #eda100;
 }
@@ -23,7 +23,7 @@
     --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232321; --hover: rgba(255,255,255,0.05);
     --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
     --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
-    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --rev: #f0efec; --seq: #3987e5;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #9085e9; --rev: #f0efec; --seq: #3987e5;
     --good: #0ca30c; --good-fill: #0ca30c; --bad: #e66767;
     --accent: #eda100;
   }
@@ -33,7 +33,7 @@
   --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232321; --hover: rgba(255,255,255,0.05);
   --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
   --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
-  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --rev: #f0efec; --seq: #3987e5;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #9085e9; --rev: #f0efec; --seq: #3987e5;
   --good: #0ca30c; --good-fill: #0ca30c; --bad: #e66767;
   --accent: #eda100;
 }
@@ -215,6 +215,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .tbl th, .tbl td { padding: 9px 8px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; }
 .tbl th { color: var(--muted); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; background: var(--surface); }
 .tbl th.l, .tbl td.l { text-align: left; }
+.tbl th.sort { cursor: pointer; user-select: none; } .tbl th.sort:hover { color: var(--ink); }
 .tbl tbody tr.main:hover td { background: var(--hover); cursor: pointer; }
 .tbl tr.top1 td { background: color-mix(in srgb, var(--good-fill) 7%, transparent); }
 .tbl tr.detail td { background: var(--surface-2); white-space: normal; text-align: left; }
@@ -286,7 +287,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 1
         <div class="seg" id="period" role="group" aria-label="Período">
           <button data-p="today">Hoje</button><button data-p="yesterday">Ontem</button><button data-p="7">7d</button><button data-p="14">14d</button><button data-p="30">30d</button><button data-p="month">Mês</button><button data-p="90">90d</button><button data-p="all">Tudo</button><button data-p="custom">Personalizado</button>
         </div>
-        <label class="dd" title="Plataforma"><select id="plat" aria-label="Plataforma"><option value="all">📡 Todas as plataformas</option><option value="taboola">Taboola</option><option value="mgid">MGID</option></select></label>
+        <label class="dd" title="Plataforma"><select id="plat" aria-label="Plataforma"><option value="all">📡 Todas as plataformas</option><option value="taboola">Taboola</option><option value="mgid">MGID</option><option value="facebook">Facebook</option></select></label>
         <label class="dd" title="País"><select id="country" aria-label="País"><option value="all">🌎 Todos os países</option></select></label>
       </div>
       <div class="custom" id="customrange" hidden>De <input type="date" id="from"> até <input type="date" id="to"></div>
@@ -337,7 +338,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 1
       <div class="seg" id="mmetric"><button data-m="roas">ROAS</button><button data-m="profit">Lucro</button><button data-m="cpa">CPA</button><button data-m="epc">EPC</button><button data-m="cpc">CPC</button><button data-m="ctr">CTR</button></div></div>
       <div class="matrix-wrap" id="matrix"></div></div>
     <div class="grid g2 mb">
-      <div class="card"><div class="card-h"><div><h3>Lucro diário por plataforma</h3><div class="sub">Receita da MGID estimada (total − Taboola)</div></div><div class="legend"><span><i class="lk" style="background:var(--s1)"></i>Taboola</span><span><i class="lk" style="background:var(--s2)"></i>MGID</span></div></div><div class="chart-box sm"><canvas id="c-pprofit"></canvas></div></div>
+      <div class="card"><div class="card-h"><div><h3>Lucro diário por plataforma</h3><div class="sub">Receita da MGID estimada (total − Taboola − Facebook)</div></div><div class="legend"><span><i class="lk" style="background:var(--s1)"></i>Taboola</span><span><i class="lk" style="background:var(--s2)"></i>MGID</span><span><i class="lk" style="background:var(--s4)"></i>Facebook</span></div></div><div class="chart-box sm"><canvas id="c-pprofit"></canvas></div></div>
       <div class="card"><div class="card-h"><div><h3>Investimento × Faturamento</h3><div class="sub">Por plataforma no período</div></div><div class="legend"><span><i class="dot" style="background:var(--s2)"></i>Investimento</span><span><i class="dot" style="background:var(--s1)"></i>Faturamento</span><span><i class="dot" style="background:var(--s3)"></i>Lucro</span></div></div><div class="chart-box sm"><canvas id="c-pbar"></canvas></div></div>
     </div>
   </section>
@@ -351,7 +352,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 1
         <div class="card"><div class="card-h"><div><h3>🚀 Escalar</h3><div class="sub">ROAS ≥ 1,5 com vendas no período</div></div></div><div class="alert-list" id="scale"></div></div>
       </div>
     </div>
-    <div class="card mb"><div class="card-h"><div><h3>Ranking de campanhas</h3><div class="sub" id="rankSub">Clique numa campanha para ver o gasto dia a dia · ordenado por lucro</div></div></div><div class="tbl-wrap"><table class="tbl" id="t-camp"></table></div></div>
+    <div class="card mb"><div class="card-h"><div><h3>Ranking de campanhas</h3><div class="sub" id="rankSub">Clique numa campanha para ver o gasto dia a dia</div></div><label class="dd" title="Ordenar campanhas"><select id="campSort" aria-label="Ordenar campanhas"><option value="sales:desc">↓ Mais vendas primeiro</option><option value="sales:asc">↑ Menos vendas primeiro</option><option value="profit:desc">↓ Maior lucro</option><option value="profit:asc">↑ Menor lucro</option><option value="roas:desc">↓ Maior ROAS</option><option value="spend:desc">↓ Maior investimento</option><option value="cpa:asc">↑ Menor CPA</option><option value="ic:desc">↓ Mais checkouts</option></select></label></div><div class="tbl-wrap"><table class="tbl" id="t-camp"></table></div></div>
     <div class="card mb"><div class="card-h"><div><h3>ROAS por campanha</h3><div class="sub">Top 10 · linha de corte em 1,0</div></div></div><div class="chart-box" id="campRoasBox"><canvas id="c-camp-roas"></canvas></div></div>
   </section>
 
@@ -386,8 +387,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 1
     <div class="card mb settings"><div class="card-h"><div><h3>Como os números são calculados</h3></div></div>
       <ul>
         <li><b>Faturamento, vendas, upsells e checkouts</b>: Ratoeira Ads (todas as vendas do projeto, via postback da Zenit).</li>
-        <li><b>Investimento</b>: Taboola (API Backstage) e MGID (API v2).</li>
-        <li><b>Receita Taboola</b>: vendas que a Ratoeira atribuiu ao Taboola. <b>Receita MGID</b>: faturamento total − receita Taboola (inclui vendas sem origem identificada).</li>
+        <li><b>Investimento</b>: Taboola (API Backstage), MGID (API v2) e Facebook (API de Marketing da Meta).</li>
+        <li><b>Receita Taboola</b>: vendas que a Ratoeira atribuiu ao Taboola. <b>Receita Facebook</b>: compras que vocês enviam ao pixel/API de Conversões (valor do evento Purchase). <b>Receita MGID</b>: faturamento total − Taboola − Facebook (inclui vendas sem origem identificada).</li>
         <li><b>Lucro líquido</b> = faturamento − investimento em anúncios. <b>ROAS</b> = faturamento ÷ investimento. <b>CPA</b> = investimento ÷ vendas front. <b>EPC</b> = faturamento ÷ cliques.</li>
         <li><b>≈ estimado</b>: receita e vendas por campanha (e por plataforma em cada país) divididas proporcionalmente às compras que cada rede reporta (ou aos cliques, quando não há compra).</li>
         <li><b>Hoje</b>: atualizado a cada 4 minutos (vendas da Ratoeira sem cache, gasto do Taboola e da MGID). Histórico, campanhas e países: atualização completa a cada ~30 minutos.</li>
@@ -406,7 +407,7 @@ const state = {
   data: null, live: null, period: store.get('nh.period') || 'today', from: null, to: null,
   plat: 'all', country: 'all', cur: store.get('nh.cur') || 'BRL', theme: store.get('nh.theme') || 'auto',
   tab: TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'visao-geral',
-  matrix: 'roas', openCamp: null, openDay: null,
+  matrix: 'roas', openCamp: null, openDay: null, campSort: (store.get('nh.campSort') || 'sales:desc'),
 };
 const charts = {};
 const $ = (id) => document.getElementById(id);
@@ -518,8 +519,12 @@ const dLong = (iso) => `${WD[dObj(iso).getUTCDay()]}, ${+iso.slice(8)} de ${MONT
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const addDays = (iso, n) => { const d = dObj(iso); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const hhmm = (iso) => new Date(iso).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' });
-const pcol = (net) => (net === 'MGID' ? css('--s2') : css('--s1'));
-const pbadge = (net, big) => `<span class="pb${big ? ' big' : ''}"><i style="background:${net === 'MGID' ? 'var(--s2)' : 'var(--s1)'}">${net === 'MGID' ? 'MG' : 'TB'}</i>${big ? '' : net}</span>`;
+const NETS = ['Taboola', 'MGID', 'Facebook'];
+const NETV = { Taboola: ['--s1', 'TB'], MGID: ['--s2', 'MG'], Facebook: ['--s4', 'FB'] };
+const netVar = (net) => (NETV[net] || NETV.Taboola)[0];
+const pcol = (net) => css(netVar(net));
+const platOn = (net) => state.plat === 'all' || state.plat === net.toLowerCase();
+const pbadge = (net, big) => `<span class="pb${big ? ' big' : ''}"><i style="background:var(${netVar(net)})">${(NETV[net] || NETV.Taboola)[1]}</i>${big ? '' : net}</span>`;
 
 /* ================= período ================= */
 function range() {
@@ -539,40 +544,44 @@ const prevRange = (r) => { const len = Math.round((dObj(r[1]) - dObj(r[0])) / 86
 /* ================= valores de um dia (moeda e filtros) ================= */
 function conv(d) {
   const fx = d.fx || 5.5, k = state.cur === 'BRL' ? fx : 1;
-  const tabCur = state.data.tab_currency || 'BRL', mgCur = state.data.mgid_currency || state.data.meta.mgid_currency || 'USD';
-  return { fx, k, tab: (x) => (tabCur === 'USD' ? x : x / fx) * k, mg: (x) => (mgCur === 'BRL' ? x / fx : x) * k, usd: (x) => x * k };
+  const tabCur = state.data.tab_currency || 'BRL', mgCur = state.data.mgid_currency || state.data.meta.mgid_currency || 'USD', fbCur = state.data.fb_currency || 'BRL';
+  return { fx, k, tab: (x) => (tabCur === 'USD' ? x : x / fx) * k, mg: (x) => (mgCur === 'BRL' ? x / fx : x) * k, fb: (x) => (fbCur === 'USD' ? x : x / fx) * k, usd: (x) => x * k };
 }
 function vals(d) {
   const c = conv(d);
-  const tab = d.tab_spend_usd ? d.tab_spend_usd * c.k : c.tab(d.tab_spend_brl || 0), mg = c.mg(d.mgid_spend || 0);
-  const revAll = c.usd(d.revenue_usd || 0), tabRev = c.usd(d.tab_rev_usd || 0), mgRev = Math.max(0, revAll - tabRev);
+  const tab = d.tab_spend_usd ? d.tab_spend_usd * c.k : c.tab(d.tab_spend_brl || 0), mg = c.mg(d.mgid_spend || 0), fb = c.fb(d.fb_spend || 0);
+  // receita por rede: Taboola = atribuída pela Ratoeira; Facebook = compras que vocês enviam ao pixel/CAPI; MGID = o restante
+  const tabRev = c.usd(d.tab_rev_usd || 0), fbRev = c.fb(d.fb_pval || 0);
+  const revAll = Math.max(c.usd(d.revenue_usd || 0), tabRev + fbRev), mgRev = Math.max(0, revAll - tabRev - fbRev);
+  const tabSales = d.tab_sales || 0, fbSales = d.fb_purch || 0, salesAll = Math.max(d.sales || 0, tabSales + fbSales);
   const n = (x) => (x == null ? NaN : x);
-  const v = { date: d.date, fx: c.fx, partial: d.partial, tab, mg, tabRev, mgRev, revAll,
-    tabSales: d.tab_sales || 0, mgSales: Math.max(0, (d.sales || 0) - (d.tab_sales || 0)),
-    tabClicks: d.tab_clicks || 0, tabImps: d.tab_imps || 0, mgClicks: d.mgid_clicks || 0, mgImps: d.mgid_imps || 0,
-    tabPv: n(d.tab_pageviews), icTab: n(d.ic_tab ?? d.tab_checkouts), icMg: n(d.ic_mgid),
+  const v = { date: d.date, fx: c.fx, partial: d.partial, tab, mg, fb, tabRev, mgRev, fbRev, revAll,
+    tabSales, fbSales, mgSales: Math.max(0, salesAll - tabSales - fbSales),
+    tabClicks: d.tab_clicks || 0, tabImps: d.tab_imps || 0, mgClicks: d.mgid_clicks || 0, mgImps: d.mgid_imps || 0, fbClicks: d.fb_clicks || 0, fbImps: d.fb_imps || 0,
+    tabPv: n(d.tab_pageviews), fbPv: n(d.fb_lpv), icTab: n(d.ic_tab ?? d.tab_checkouts), icMg: n(d.ic_mgid), icFb: n(d.fb_ic),
     front: Math.max(0, (d.sales_front || 0) + (adj(d).front || 0)), ups: Math.max(0, (d.upsells || 0) + (adj(d).upsells || 0)), refunds: c.usd(d.refunds_usd || 0), upsRev: c.usd((d.upsell_usd || 0) + (adj(d).upsell_usd || 0)), pv: NaN };
   const cc = state.country;
   if (cc !== 'all') {
-    const cr = d.countries?.[cc] || [0, 0], tc = d.tab_ctry?.[cc] || [0, 0, 0, 0], mc = d.mgid_ctry?.[cc] || [0, 0, 0, 0];
-    const tS = c.tab(tc[0]), mS = c.mg(mc[0]);
+    const cr = d.countries?.[cc] || [0, 0], tc = d.tab_ctry?.[cc] || [0, 0, 0, 0], mc = d.mgid_ctry?.[cc] || [0, 0, 0, 0], fc = d.fb_ctry?.[cc] || [0, 0, 0, 0];
+    const parts = { Taboola: [c.tab(tc[0]), tc[1], tc[2]], MGID: [c.mg(mc[0]), mc[1], mc[2]], Facebook: [c.fb(fc[0]), fc[1], fc[2]] };
+    const on = NETS.filter(platOn);
     v.rev = c.usd(cr[1]); v.sales = cr[0]; v.front = cr[0]; v.ups = NaN; v.ic = NaN;
-    v.spend = state.plat === 'mgid' ? mS : state.plat === 'taboola' ? tS : tS + mS;
-    v.clicks = state.plat === 'mgid' ? mc[1] : state.plat === 'taboola' ? tc[1] : tc[1] + mc[1];
-    v.imps = state.plat === 'mgid' ? mc[2] : state.plat === 'taboola' ? tc[2] : tc[2] + mc[2];
+    v.spend = on.reduce((a, k) => a + parts[k][0], 0); v.clicks = on.reduce((a, k) => a + parts[k][1], 0); v.imps = on.reduce((a, k) => a + (parts[k][2] || 0), 0);
   } else if (state.plat === 'taboola') {
     Object.assign(v, { rev: tabRev, spend: tab, sales: v.tabSales, front: v.tabSales, ups: NaN, ic: v.icTab, clicks: v.tabClicks, imps: v.tabImps, pv: v.tabPv });
   } else if (state.plat === 'mgid') {
     Object.assign(v, { rev: mgRev, spend: mg, sales: v.mgSales, front: v.mgSales, ups: NaN, ic: v.icMg, clicks: v.mgClicks, imps: v.mgImps });
+  } else if (state.plat === 'facebook') {
+    Object.assign(v, { rev: fbRev, spend: fb, sales: fbSales, front: fbSales, ups: NaN, ic: v.icFb, clicks: v.fbClicks, imps: v.fbImps, pv: v.fbPv });
   } else {
-    Object.assign(v, { rev: revAll, spend: tab + mg, sales: d.sales || 0, ic: n(d.ic), clicks: v.tabClicks + v.mgClicks, imps: v.tabImps + v.mgImps });
+    Object.assign(v, { rev: revAll, spend: tab + mg + fb, sales: salesAll, ic: n(d.ic), clicks: v.tabClicks + v.mgClicks + v.fbClicks, imps: v.tabImps + v.mgImps + v.fbImps });
   }
   v.profit = v.rev - v.spend;
   return v;
 }
 const sum = (rows, k) => rows.reduce((a, r) => a + (isFinite(r[k]) ? r[k] : 0), 0);
 const sumN = (rows, k) => (rows.some((r) => isFinite(r[k])) ? sum(rows, k) : NaN);
-const TOT_KEYS = ['rev', 'spend', 'profit', 'sales', 'front', 'ups', 'tab', 'mg', 'tabRev', 'mgRev', 'revAll', 'refunds', 'upsRev', 'ic', 'icTab', 'icMg', 'clicks', 'imps', 'pv', 'tabPv', 'tabSales', 'mgSales', 'tabClicks', 'mgClicks', 'tabImps', 'mgImps'];
+const TOT_KEYS = ['rev', 'spend', 'profit', 'sales', 'front', 'ups', 'tab', 'mg', 'tabRev', 'mgRev', 'revAll', 'refunds', 'upsRev', 'ic', 'icTab', 'icMg', 'clicks', 'imps', 'pv', 'tabPv', 'tabSales', 'mgSales', 'tabClicks', 'mgClicks', 'tabImps', 'mgImps', 'fb', 'fbRev', 'fbSales', 'fbClicks', 'fbImps', 'icFb', 'fbPv'];
 function totals(rows) { const T = { days: rows.length }; for (const k of TOT_KEYS) T[k] = sumN(rows, k); return T; }
 function ratios(T) {
   const front = isFinite(T.front) ? T.front : T.sales;
@@ -737,7 +746,7 @@ function renderInsights(rows, r) {
   if (worst.date !== best.date) h += row('📉', worst.profit < 0 ? '--bad' : '--warn', 'Pior dia', dLong(worst.date), `<span class="${worst.profit >= 0 ? 'pos' : 'neg'}">${money(worst.profit)}</span>`);
   if (state.plat === 'all') {
     const ps = platformStats(rows).filter((x) => x.spend > 0).sort((a, b) => b.profit - a.profit);
-    if (ps.length > 1) { const b = ps[0]; h += row('📡', b.net === 'MGID' ? '--s2' : '--s1', `Melhor plataforma: ${b.net}`, `ROAS ${xf(b.roas)} · EPC ${moneyP(b.epc)}`, `<span class="${b.profit >= 0 ? 'pos' : 'neg'}">${money(b.profit)}</span>`); }
+    if (ps.length > 1) { const b = ps[0]; h += row('📡', netVar(b.net), `Melhor plataforma: ${b.net}`, `ROAS ${xf(b.roas)} · EPC ${moneyP(b.epc)}`, `<span class="${b.profit >= 0 ? 'pos' : 'neg'}">${money(b.profit)}</span>`); }
   }
   if (state.country === 'all') {
     const cs = countryStats(inRange(r)).filter((x) => x.rev > 0).sort((a, b) => b.profit - a.profit);
@@ -828,7 +837,7 @@ function renderCountryPie(rows, r) {
 function platformStats(rows) {
   const T = totals(rows);
   const mk = (net, spend, rev, sales, clicks, imps, ic, pv) => ({ net, spend, rev, sales, clicks, imps, ic, pv, profit: rev - spend, roas: div(rev, spend), cpa: div(spend, sales), cpc: div(spend, clicks), epc: div(rev, clicks), ctr: div(clicks, imps) * 100, chk: div(sales, ic) * 100, cppv: div(spend, pv) });
-  return [mk('Taboola', T.tab, T.tabRev, T.tabSales, T.tabClicks, T.tabImps, T.icTab, T.tabPv), mk('MGID', T.mg, T.mgRev, T.mgSales, T.mgClicks, T.mgImps, T.icMg, NaN)];
+  return [mk('Taboola', T.tab, T.tabRev, T.tabSales, T.tabClicks, T.tabImps, T.icTab, T.tabPv), mk('MGID', T.mg, T.mgRev, T.mgSales, T.mgClicks, T.mgImps, T.icMg, NaN), mk('Facebook', T.fb, T.fbRev, T.fbSales, T.fbClicks, T.fbImps, T.icFb, T.fbPv)];
 }
 function statusTag(o, best) {
   if (!o.spend) return '<span class="tag2 neutral">Sem investimento</span>';
@@ -840,7 +849,7 @@ function mstats(list) { return `<div class="mstats">${list.map(([l, v, cls]) => 
 function renderPlatforms(rows, r) {
   // com país selecionado, usa a quebra plataforma × país
   let ps;
-  if (state.country !== 'all') ps = ['Taboola', 'MGID'].map((net) => { const x = matrixCells(inRange(r)).find((c) => c.net === net && c.cc === state.country) || { spend: 0, rev: 0, sales: 0, clicks: 0, imps: 0 }; return { net, ...x, ic: NaN, pv: NaN, profit: x.rev - x.spend, roas: div(x.rev, x.spend), cpa: div(x.spend, x.sales), cpc: div(x.spend, x.clicks), epc: div(x.rev, x.clicks), ctr: div(x.clicks, x.imps) * 100, chk: NaN, cppv: NaN }; });
+  if (state.country !== 'all') ps = NETS.map((net) => { const x = matrixCells(inRange(r)).find((c) => c.net === net && c.cc === state.country) || { spend: 0, rev: 0, sales: 0, clicks: 0, imps: 0 }; return { net, ...x, ic: NaN, pv: NaN, profit: x.rev - x.spend, roas: div(x.rev, x.spend), cpa: div(x.spend, x.sales), cpc: div(x.spend, x.clicks), epc: div(x.rev, x.clicks), ctr: div(x.clicks, x.imps) * 100, chk: NaN, cppv: NaN }; });
   else ps = platformStats(rows);
   if (state.plat !== 'all') ps = ps.filter((x) => x.net.toLowerCase() === state.plat);
   ps.sort((a, b) => b.profit - a.profit);
@@ -855,6 +864,7 @@ function renderPlatforms(rows, r) {
   chart('pprofit', 'c-pprofit', { type: 'line', data: { labels, datasets: [
     { label: 'Taboola', data: ctx.map((v) => v.tabRev - v.tab), borderColor: css('--s1'), backgroundColor: css('--s1'), borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5, tension: 0.3 },
     { label: 'MGID', data: ctx.map((v) => v.mgRev - v.mg), borderColor: css('--s2'), backgroundColor: css('--s2'), borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5, tension: 0.3 },
+    { label: 'Facebook', data: ctx.map((v) => v.fbRev - v.fb), borderColor: css('--s4'), backgroundColor: css('--s4'), borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5, tension: 0.3 },
   ] }, options: (() => { const o = baseOpts(); if (o) { o.scales.y.beginAtZero = false; o.plugins.refLine = { value: 0, color: css('--axis') }; } return o; })() });
   chart('pbar', 'c-pbar', { type: 'bar', data: { labels: ps.map((x) => x.net), datasets: [
     { label: 'Investimento', data: ps.map((x) => x.spend), backgroundColor: css('--s2'), borderRadius: 6, maxBarThickness: 40 },
@@ -868,14 +878,17 @@ function matrixCells(days) {
   const cell = (net, cc) => (cells[net + '|' + cc] ||= { net, cc, spend: 0, rev: 0, sales: 0, clicks: 0, imps: 0 });
   for (const d of days) {
     const c = conv(d);
-    const ccs = new Set([...Object.keys(d.tab_ctry || {}), ...Object.keys(d.mgid_ctry || {}), ...Object.keys(d.countries || {})]);
+    const ccs = new Set([...Object.keys(d.tab_ctry || {}), ...Object.keys(d.mgid_ctry || {}), ...Object.keys(d.fb_ctry || {}), ...Object.keys(d.countries || {})]);
     for (const cc of ccs) {
-      const tc = d.tab_ctry?.[cc] || [0, 0, 0, 0], mc = d.mgid_ctry?.[cc] || [0, 0, 0, 0], cr = d.countries?.[cc] || [0, 0];
-      const tS = c.tab(tc[0]), mS = c.mg(mc[0]), rev = c.usd(cr[1]);
-      const cv = (tc[3] || 0) + (mc[3] || 0), sp = tS + mS;
-      const shT = cv ? (tc[3] || 0) / cv : sp ? tS / sp : 0;
-      if (tS || tc[1]) { const x = cell('Taboola', cc); x.spend += tS; x.clicks += tc[1]; x.imps += tc[2]; x.rev += rev * shT; x.sales += cr[0] * shT; }
-      if (mS || mc[1]) { const x = cell('MGID', cc); x.spend += mS; x.clicks += mc[1]; x.imps += mc[2]; x.rev += rev * (1 - shT); x.sales += cr[0] * (1 - shT); }
+      const cr = d.countries?.[cc] || [0, 0], rev = c.usd(cr[1]);
+      const src = { Taboola: [d.tab_ctry?.[cc], c.tab], MGID: [d.mgid_ctry?.[cc], c.mg], Facebook: [d.fb_ctry?.[cc], c.fb] };
+      const rowsN = NETS.map((net) => { const t = src[net][0] || [0, 0, 0, 0]; return { net, sp: src[net][1](t[0]), cl: t[1] || 0, im: t[2] || 0, cv: t[3] || 0 }; });
+      const cvT = rowsN.reduce((a, x) => a + x.cv, 0), spT = rowsN.reduce((a, x) => a + x.sp, 0);
+      for (const x of rowsN) {
+        if (!(x.sp || x.cl)) continue;
+        const sh = cvT ? x.cv / cvT : spT ? x.sp / spT : 0, y = cell(x.net, cc);
+        y.spend += x.sp; y.clicks += x.cl; y.imps += x.im; y.rev += rev * sh; y.sales += cr[0] * sh;
+      }
     }
   }
   return Object.values(cells).map((x) => ({ ...x, profit: x.rev - x.spend, roas: div(x.rev, x.spend), cpa: div(x.spend, x.sales), epc: div(x.rev, x.clicks), cpc: div(x.spend, x.clicks), ctr: div(x.clicks, x.imps) * 100 }));
@@ -884,7 +897,7 @@ function renderMatrix(days) {
   let cells = matrixCells(days);
   if (state.plat !== 'all') cells = cells.filter((x) => x.net.toLowerCase() === state.plat);
   if (!cells.length) { $('matrix').innerHTML = '<div class="note">Sem dados por país no período.</div>'; return; }
-  const nets = ['Taboola', 'MGID'].filter((n) => cells.some((c) => c.net === n));
+  const nets = NETS.filter((n) => cells.some((c) => c.net === n));
   const ccTot = {}; for (const c of cells) ccTot[c.cc] = (ccTot[c.cc] || 0) + c.spend;
   const ccs = Object.keys(ccTot).sort((a, b) => ccTot[b] - ccTot[a]);
   const m = state.matrix, goodHigh = !['cpa', 'cpc'].includes(m);
@@ -905,22 +918,23 @@ function renderMatrix(days) {
 /* ================= CAMPANHAS ================= */
 // receita/vendas da rede (Ratoeira) divididas entre as campanhas dela, proporcional às compras que a rede reporta (ou cliques)
 function campaignStats(days) {
-  const agg = {}, netTot = { Taboola: { rev: 0, sales: 0 }, MGID: { rev: 0, sales: 0 } };
+  const agg = {}, netTot = { Taboola: { rev: 0, sales: 0 }, MGID: { rev: 0, sales: 0 }, Facebook: { rev: 0, sales: 0 } };
   for (const d of days) {
     const v = vals(d), c = conv(d);
-    netTot.Taboola.rev += v.tabRev; netTot.Taboola.sales += v.tabSales; netTot.MGID.rev += v.mgRev; netTot.MGID.sales += v.mgSales;
+    netTot.Taboola.rev += v.tabRev; netTot.Taboola.sales += v.tabSales; netTot.MGID.rev += v.mgRev; netTot.MGID.sales += v.mgSales; netTot.Facebook.rev += v.fbRev; netTot.Facebook.sales += v.fbSales;
     const add = (net, list, f) => { for (const x of list || []) {
       const a = (agg[net + x.id] ||= { net, id: x.id, name: x.name, spend: 0, clicks: 0, imps: 0, conv: 0, cval: 0, byDay: {} });
-      const sp = f(x.spend || 0); a.name = x.name || a.name; a.spend += sp; a.clicks += x.clicks || 0; a.imps += x.imps || 0; a.conv += x.conv || 0; a.cval += f(x.cval || 0);
+      const sp = f(x.spend || 0); a.name = x.name || a.name; a.spend += sp; a.clicks += x.clicks || 0; a.imps += x.imps || 0; a.conv += x.conv || 0; if (x.ic != null) a.ic = (a.ic || 0) + x.ic; a.cval += f(x.cval || 0);
       const bd = (a.byDay[d.date] ||= { spend: 0, clicks: 0, conv: 0 }); bd.spend += sp; bd.clicks += x.clicks || 0; bd.conv += x.conv || 0; } };
-    if (state.plat !== 'mgid') add('Taboola', d.tab_camps, c.tab);
-    if (state.plat !== 'taboola') add('MGID', d.mgid_camps, c.mg);
+    if (platOn('Taboola')) add('Taboola', d.tab_camps, c.tab);
+    if (platOn('MGID')) add('MGID', d.mgid_camps, c.mg);
+    if (platOn('Facebook')) add('Facebook', d.fb_camps, c.fb);
   }
   let rows = Object.values(agg).filter((x) => x.spend > 0 || x.clicks > 0);
-  for (const net of ['Taboola', 'MGID']) {
+  for (const net of NETS) {
     const list = rows.filter((x) => x.net === net), hasVal = list.some((x) => x.cval > 0);
     const tc = sum(list, 'conv'), tk = sum(list, 'clicks');
-    for (const x of list) { const sh = tc ? x.conv / tc : tk ? x.clicks / tk : 0; x.est = !hasVal; x.rev = hasVal ? x.cval : netTot[net].rev * sh; x.sales = netTot[net].sales * sh; }
+    for (const x of list) { const sh = tc ? x.conv / tc : tk ? x.clicks / tk : 0; x.est = !hasVal; x.rev = hasVal ? x.cval : netTot[net].rev * sh; x.sales = hasVal ? x.conv : netTot[net].sales * sh; }
   }
   const spendAll = sum(rows, 'spend'), salesAll = sum(rows, 'sales'), avgCpa = salesAll >= 1 ? spendAll / salesAll : NaN;
   rows = rows.map((x) => { const y = { ...x, nd: Object.values(x.byDay).filter((b) => b.spend > 0).length, cpc: div(x.spend, x.clicks), ctr: div(x.clicks, x.imps) * 100, cpa: div(x.spend, x.sales), roas: div(x.rev, x.spend), profit: x.rev - x.spend, epc: div(x.rev, x.clicks) }; y.sug = suggestion(y, avgCpa, spendAll); return y; });
@@ -941,9 +955,12 @@ const ICO_DOWN = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" st
 const ICO_UP = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>';
 function renderCampaigns(rows, r) {
   const { rows: ads, avgCpa } = campaignStats(inRange(r));
-  const sorted = ads.slice().sort((a, b) => b.profit - a.profit);
+  const [sk, sd] = state.campSort.split(':');
+  const sv = (x) => { const v = sk === 'ic' ? x.ic : x[sk]; return isFinite(v) ? v : null; };
+  // empate: desempata por lucro; valores sem dado vão sempre para o fim
+  const sorted = ads.slice().sort((a, b) => { const va = sv(a), vb = sv(b); if (va === null && vb === null) return b.profit - a.profit; if (va === null) return 1; if (vb === null) return -1; return (sd === 'asc' ? va - vb : vb - va) || b.profit - a.profit; });
   const e = (x) => (x.est ? '≈ ' : '');
-  const best = sorted.find((a) => a.profit > 0) || sorted[0];
+  const byProfit = ads.slice().sort((a, b) => b.profit - a.profit), best = byProfit.find((a) => a.profit > 0) || byProfit[0];
   $('campBest').innerHTML = best ? `<div class="trophy">🏆</div><div style="min-width:0"><div class="sub-t" style="margin:0">Melhor campanha do período</div><h3 title="${esc(best.name)}">${esc(best.name)}</h3>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${pbadge(best.net)}<span class="note">${best.nd} dia${best.nd === 1 ? '' : 's'} rodando</span></div>
     <div class="bstats"><div><small>Lucro</small><b class="${best.profit >= 0 ? 'pos' : 'neg'}">${e(best)}${money(best.profit)}</b></div><div><small>ROAS</small><b>${xf(best.roas)}</b></div><div><small>Vendas</small><b>${e(best)}${best.sales.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}</b></div><div><small>CPA</small><b>${dash(best.cpa, money)}</b></div><div><small>EPC</small><b>${moneyP(best.epc)}</b></div><div><small>CPC</small><b>${moneyP(best.cpc)}</b></div></div></div>`
@@ -955,15 +972,18 @@ function renderCampaigns(rows, r) {
     ...losing.slice(0, Math.max(0, 3 - bleed.length)).map((a) => `<div class="alert"><span class="neg">${ICO_DOWN}</span><span style="min-width:0"><b title="${esc(a.name)}">${esc(a.name)}</b><span class="note">${a.net} · ROAS ${xf(a.roas)} · 🔧 otimizar</span></span><span class="num neg">${e(a)}${money(a.profit)}</span></div>`)].join('') || '<div class="note">Nenhuma campanha no vermelho neste período. 👏</div>';
   const scale = ads.filter((a) => a.sug.k === 'scale').sort((a, b) => b.profit - a.profit);
   $('scale').innerHTML = scale.slice(0, 3).map((a) => `<div class="alert ok"><span class="pos">${ICO_UP}</span><span style="min-width:0"><b title="${esc(a.name)}">${esc(a.name)}</b><span class="note">${a.net} · ROAS ${xf(a.roas)}</span></span><span class="num pos">${e(a)}${money(a.profit)}</span></div>`).join('') || '<div class="note">Nenhuma campanha com ROAS ≥ 1,5 e vendas ainda.</div>';
-  $('rankSub').textContent = 'Clique numa campanha para ver o gasto dia a dia · ordenado por lucro' + (ads.some((a) => a.est) ? ' · ≈ estimado pelas compras que a rede reporta em cada campanha' : '');
-  const H = ['#', 'Campanha', 'Plataforma', 'Sugestão', 'Dias', 'Investimento', 'Cliques', 'CPC', 'Compras (rede)', 'Vendas', 'CPA', 'Faturamento', 'EPC', 'ROAS', 'Lucro'];
+  $('campSort').value = state.campSort;
+  $('campSort').onchange = (ev) => { state.campSort = ev.target.value; store.set('nh.campSort', state.campSort); renderCampaigns(rows, r); };
+  $('rankSub').textContent = 'Clique numa campanha para ver o gasto dia a dia · clique no título de uma coluna para ordenar' + (ads.some((a) => a.est) ? ' · ≈ estimado pelas compras que a rede reporta em cada campanha' : '');
+  const H = [['#'], ['Campanha'], ['Plataforma'], ['Sugestão'], ['Dias'], ['Investimento', 'spend'], ['Cliques', 'clicks'], ['CPC', 'cpc'], ['Checkouts', 'ic'], ['Vendas', 'sales'], ['CPA', 'cpa'], ['Faturamento', 'rev'], ['EPC', 'epc'], ['ROAS', 'roas'], ['Lucro', 'profit']];
   $('t-camp').innerHTML = !sorted.length ? '<tbody><tr><td class="empty">Nenhuma campanha com gasto no período.</td></tr></tbody>' :
-    `<thead><tr>${H.map((h, i) => `<th class="${i < 4 ? 'l' : ''}">${h}</th>`).join('')}</tr></thead><tbody>${sorted.map((a, i) => {
+    `<thead><tr>${H.map(([h, k], i) => `<th class="${i < 4 ? 'l' : ''}${k ? ' sort' : ''}"${k ? ` data-k="${k}" title="Ordenar por ${h.toLowerCase()}"` : ''}>${h}${k === sk ? (sd === 'asc' ? ' ↑' : ' ↓') : ''}</th>`).join('')}</tr></thead><tbody>${sorted.map((a, i) => {
       const k = a.net + a.id, open = state.openCamp === k;
       const det = open ? `<tr class="detail"><td colspan="15"><div class="sub-t">Dia a dia</div><table class="mini"><thead><tr><th>Dia</th><th>Investimento</th><th>Cliques</th><th>CPC</th><th>Compras (rede)</th></tr></thead><tbody>${Object.entries(a.byDay).sort((x, y) => y[0].localeCompare(x[0])).map(([d, b]) => `<tr><td>${dLong(d)}</td><td>${money(b.spend)}</td><td>${intf(b.clicks)}</td><td>${moneyP(div(b.spend, b.clicks))}</td><td>${intf(b.conv)}</td></tr>`).join('')}</tbody></table></td></tr>` : '';
-      return `<tr class="main${i === 0 && a.profit > 0 ? ' top1' : ''}" data-k="${esc(k)}"><td class="l note">${open ? '▾' : '▸'} ${i + 1}</td><td class="l name" title="${esc(a.name)}"><b>${esc(a.name)}</b></td><td class="l">${pbadge(a.net)}</td><td class="l"><span class="tag2 ${a.sug.k}" title="${esc(a.sug.why)}">${a.sug.t}</span></td><td>${a.nd}</td><td>${money(a.spend)}</td><td>${intf(a.clicks)}</td><td>${moneyP(a.cpc)}</td><td>${intf(a.conv)}</td><td>${e(a)}${a.sales.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}</td><td>${dash(a.cpa, money)}</td><td>${e(a)}${money(a.rev)}</td><td>${moneyP(a.epc)}</td><td class="${a.roas >= 1 ? 'pos' : 'neg'}">${xf(a.roas)}</td><td class="${a.profit >= 0 ? 'pos' : 'neg'}">${e(a)}${money(a.profit)}</td></tr>${det}`;
+      return `<tr class="main${i === 0 && a.profit > 0 ? ' top1' : ''}" data-k="${esc(k)}"><td class="l note">${open ? '▾' : '▸'} ${i + 1}</td><td class="l name" title="${esc(a.name)}"><b>${esc(a.name)}</b></td><td class="l">${pbadge(a.net)}</td><td class="l"><span class="tag2 ${a.sug.k}" title="${esc(a.sug.why)}">${a.sug.t}</span></td><td>${a.nd}</td><td>${money(a.spend)}</td><td>${intf(a.clicks)}</td><td>${moneyP(a.cpc)}</td><td>${a.ic != null ? intf(a.ic) : '—'}</td><td>${e(a)}${a.sales.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}</td><td>${dash(a.cpa, money)}</td><td>${e(a)}${money(a.rev)}</td><td>${moneyP(a.epc)}</td><td class="${a.roas >= 1 ? 'pos' : 'neg'}">${xf(a.roas)}</td><td class="${a.profit >= 0 ? 'pos' : 'neg'}">${e(a)}${money(a.profit)}</td></tr>${det}`;
     }).join('')}</tbody>`;
   $('t-camp').querySelectorAll('tr.main').forEach((tr) => (tr.onclick = () => { state.openCamp = state.openCamp === tr.dataset.k ? null : tr.dataset.k; renderCampaigns(rows, r); }));
+  $('t-camp').querySelectorAll('th.sort').forEach((th) => (th.onclick = () => { const k = th.dataset.k; state.campSort = k + ':' + (sk === k && sd === 'desc' ? 'asc' : 'desc'); store.set('nh.campSort', state.campSort); renderCampaigns(rows, r); }));
   const top = ads.filter((a) => a.spend > 0).sort((a, b) => b.roas - a.roas).slice(0, 10);
   $('campRoasBox').style.height = Math.max(200, top.length * 38 + 40) + 'px';
   roasBar('campRoas', 'c-camp-roas', top, (a) => (a.name.length > 30 ? a.name.slice(0, 29) + '…' : a.name));
@@ -977,12 +997,13 @@ function roasBar(key, id, list, label) {
 /* ================= PAÍSES ================= */
 function countryStats(days) {
   const agg = {};
-  const blank = (cc) => ({ cc, sales: 0, rev: 0, spend: 0, tab: 0, mg: 0, clicks: 0, imps: 0 });
+  const blank = (cc) => ({ cc, sales: 0, rev: 0, spend: 0, tab: 0, mg: 0, fb: 0, clicks: 0, imps: 0 });
   for (const d of days) {
     const c = conv(d);
     for (const [cc, [s, rv]] of Object.entries(d.countries || {})) { const a = (agg[cc] ||= blank(cc)); a.sales += s; a.rev += c.usd(rv); }
-    if (state.plat !== 'mgid') for (const [cc, t] of Object.entries(d.tab_ctry || {})) { const a = (agg[cc] ||= blank(cc)); const v = c.tab(t[0]); a.tab += v; a.spend += v; a.clicks += t[1]; a.imps += t[2] || 0; }
-    if (state.plat !== 'taboola') for (const [cc, t] of Object.entries(d.mgid_ctry || {})) { const a = (agg[cc] ||= blank(cc)); const v = c.mg(t[0]); a.mg += v; a.spend += v; a.clicks += t[1]; a.imps += t[2] || 0; }
+    if (platOn('Taboola')) for (const [cc, t] of Object.entries(d.tab_ctry || {})) { const a = (agg[cc] ||= blank(cc)); const v = c.tab(t[0]); a.tab += v; a.spend += v; a.clicks += t[1]; a.imps += t[2] || 0; }
+    if (platOn('MGID')) for (const [cc, t] of Object.entries(d.mgid_ctry || {})) { const a = (agg[cc] ||= blank(cc)); const v = c.mg(t[0]); a.mg += v; a.spend += v; a.clicks += t[1]; a.imps += t[2] || 0; }
+    if (platOn('Facebook')) for (const [cc, t] of Object.entries(d.fb_ctry || {})) { const a = (agg[cc] ||= blank(cc)); const v = c.fb(t[0]); a.fb += v; a.spend += v; a.clicks += t[1]; a.imps += t[2] || 0; }
   }
   return Object.values(agg).map((x) => ({ ...x, profit: x.rev - x.spend, roas: div(x.rev, x.spend), cpa: div(x.spend, x.sales), cpc: div(x.spend, x.clicks), epc: div(x.rev, x.clicks), ctr: div(x.clicks, x.imps) * 100 }));
 }
@@ -1042,8 +1063,8 @@ function dayDetail(date) {
 }
 function exportCsv() {
   if (!state.data) return;
-  const head = ['data', 'investimento_taboola', 'investimento_mgid', 'investimento_total', 'cliques', 'impressoes', 'checkouts', 'vendas', 'vendas_front', 'upsells', 'faturamento', 'lucro', 'roas', 'moeda'];
-  const lines = state.data.days.map((d) => { const v = vals(d); return [d.date, v.tab.toFixed(2), v.mg.toFixed(2), (v.tab + v.mg).toFixed(2), v.tabClicks + v.mgClicks, v.tabImps + v.mgImps, d.ic ?? '', d.sales || 0, v.front, v.ups, v.revAll.toFixed(2), (v.revAll - v.tab - v.mg).toFixed(2), div(v.revAll, v.tab + v.mg).toFixed(2), state.cur].join(';'); });
+  const head = ['data', 'investimento_taboola', 'investimento_mgid', 'investimento_facebook', 'investimento_total', 'cliques', 'impressoes', 'checkouts', 'vendas', 'vendas_front', 'upsells', 'faturamento', 'lucro', 'roas', 'moeda'];
+  const lines = state.data.days.map((d) => { const v = vals(d); return [d.date, v.tab.toFixed(2), v.mg.toFixed(2), v.fb.toFixed(2), (v.tab + v.mg + v.fb).toFixed(2), v.tabClicks + v.mgClicks + v.fbClicks, v.tabImps + v.mgImps + v.fbImps, d.ic ?? '', d.sales || 0, v.front, v.ups, v.revAll.toFixed(2), (v.revAll - v.tab - v.mg - v.fb).toFixed(2), div(v.revAll, v.tab + v.mg + v.fb).toFixed(2), state.cur].join(';'); });
   const blob = new Blob(['﻿' + [head.join(';'), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `painel-neurohoney-${state.data.meta.today}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
@@ -1056,13 +1077,14 @@ function renderSettings() {
   $('project').innerHTML = `
     <dt>Meta de lucro diário</dt><dd>${meta.daily_goal_brl ? `<b>R$ ${meta.daily_goal_brl.toLocaleString('pt-BR')}</b> por dia` : 'não definida'} <span class="note">(DAILY_GOAL no workflow)</span></dd>
     ${meta.start_date ? `<dt>Início da operação</dt><dd>${dLong(meta.start_date)} · dados anteriores são ignorados</dd>` : ''}
-    <dt>Plataformas de tráfego</dt><dd>${pbadge('Taboola')} ${pbadge('MGID')}</dd>
-    <dt>Moedas de origem</dt><dd>Taboola em ${esc(state.data.tab_currency || 'BRL')} · MGID em ${esc(state.data.mgid_currency || meta.mgid_currency)} · vendas em USD</dd>
+    <dt>Plataformas de tráfego</dt><dd>${pbadge('Taboola')} ${pbadge('MGID')} ${pbadge('Facebook')}</dd>
+    <dt>Moedas de origem</dt><dd>Taboola em ${esc(state.data.tab_currency || 'BRL')} · MGID em ${esc(state.data.mgid_currency || meta.mgid_currency)} · Facebook em ${esc(state.data.fb_currency || 'BRL')} · vendas em USD</dd>
     <dt>Câmbio mais recente</dt><dd>US$ 1 = R$ ${(last?.fx || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>`;
   $('sources').innerHTML = `
     <dt>Ratoeira Ads</dt><dd>${st(src.ratoeira !== false && !has('ratoeira'), src.ratoeira === false ? 'Sem conexão' : has('ratoeira') ? 'Conectada, com avisos' : 'Conectada')}</dd>
     <dt>Taboola</dt><dd>${st(src.taboola !== false && !has('taboola'), src.taboola === false ? 'Sem conexão' : has('taboola') ? 'Conectado, com avisos' : 'Conectado')}</dd>
     <dt>MGID</dt><dd>${st(!!src.mgid && !has('mgid'), src.mgid ? 'Conectada' : 'Sem acesso — verifique MGID_TOKEN e MGID_CLIENT_ID')}</dd>
+    <dt>Facebook</dt><dd>${st(!!src.facebook && !has('facebook'), src.facebook ? 'Conectado' : 'Sem acesso — crie os secrets META_ACCESS_TOKEN e META_AD_ACCOUNT_ID')}</dd>
     <dt>Ao vivo (hoje)</dt><dd>${state.live ? st(Date.now() - Date.parse(state.live.updated_at) < 10 * 60000, 'Vendas de hoje atualizadas às ' + hhmm(state.live.updated_at) + ' · a cada 4 minutos') : '<span class="note">Aguardando o primeiro ciclo ao vivo.</span>'}</dd>
     <dt>Última atualização completa</dt><dd>${new Date(meta.updated_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</dd>
     <dt>Histórico guardado</dt><dd>${days.length} dias${days.filter((d) => d.partial).length ? ` · ${days.filter((d) => d.partial).length} incompleto(s)` : ''}</dd>

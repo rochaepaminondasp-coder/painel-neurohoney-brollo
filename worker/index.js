@@ -58,6 +58,7 @@ async function collect(env) {
   const day = { date };
   const tab = env.TABOOLA_CLIENT_ID ? taboolaToday(env, date).catch((e) => { errors.push('taboola: ' + e.message); return null; }) : null;
   const mg = env.MGID_TOKEN ? mgidToday(env, date).catch((e) => { errors.push('mgid: ' + e.message); return null; }) : null;
+  const fb = env.META_ACCESS_TOKEN && env.META_AD_ACCOUNT_ID ? facebookToday(env, date).catch((e) => { errors.push('facebook: ' + e.message); return null; }) : null;
   const t = await tab; // conta Taboola resolvida é usada na Ratoeira
   if (env.RATOEIRA_MCP_URL) {
     try { Object.assign(day, await ratoeiraToday(env, date, t?.account)); }
@@ -66,6 +67,8 @@ async function collect(env) {
   if (t) Object.assign(day, t.day);
   const m = await mg;
   if (m) Object.assign(day, m);
+  const f = await fb;
+  if (f) Object.assign(day, f);
   day.fx = day.revenue_usd > 0 ? day.revenue_brl / day.revenue_usd : day.r_cost_usd > 0 ? day.r_cost_brl / day.r_cost_usd : undefined;
   return { date, updated_at: new Date().toISOString(), day, errors };
 }
@@ -173,6 +176,21 @@ async function taboolaToday(env, date) {
   if (!rr.ok) throw new Error(`relatório HTTP ${rr.status}`);
   const row = ((await rr.json()).results || [])[0] || {};
   return { account, day: { tab_spend_brl: r2(num(row.spent)), tab_spend_usd: 0, tab_clicks: num(row.clicks), tab_imps: num(row.impressions), api_tab_spend: r2(num(row.spent)) } };
+}
+
+// ---------- Facebook (Meta Marketing API) ----------
+async function facebookToday(env, date) {
+  const acc = String(env.META_AD_ACCOUNT_ID).trim().replace(/^act_/, '');
+  const qs = new URLSearchParams({ fields: 'spend,impressions,inline_link_clicks,actions,action_values', time_range: JSON.stringify({ since: date, until: date }) });
+  const res = await fetch(`https://graph.facebook.com/v21.0/act_${acc}/insights?${qs}`, { headers: { Authorization: `Bearer ${String(env.META_ACCESS_TOKEN).trim()}` } });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok || j.error) throw new Error(`HTTP ${res.status} ${(j.error?.message || '').slice(0, 120)}`);
+  const r = (j.data || [])[0] || {};
+  const act = (k) => num((r.actions || []).find((a) => a.action_type === k)?.value);
+  const val = (k) => num((r.action_values || []).find((a) => a.action_type === k)?.value);
+  return { fb_spend: r2(num(r.spend)), fb_clicks: num(r.inline_link_clicks), fb_imps: num(r.impressions), fb_lpv: act('landing_page_view'),
+    fb_ic: act('initiate_checkout') || act('offsite_conversion.fb_pixel_initiate_checkout'), fb_purch: act('purchase') || act('offsite_conversion.fb_pixel_purchase'),
+    fb_pval: r2(val('purchase') || val('offsite_conversion.fb_pixel_purchase')) };
 }
 
 // ---------- MGID (API v2) ----------

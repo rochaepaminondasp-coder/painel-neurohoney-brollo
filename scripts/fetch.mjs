@@ -270,6 +270,64 @@ async function mgidCountryDays(from, to) {
   return out;
 }
 
+// ---------- Facebook (Meta Marketing API) ----------
+// Token de usuário do sistema com ads_read; conta act_<id>. Valores na moeda da conta.
+const META_TOKEN = String(env.META_ACCESS_TOKEN || '').trim();
+const META_ACC = String(env.META_AD_ACCOUNT_ID || '').trim().replace(/^act_/, '');
+const FB_FIELDS = 'spend,impressions,inline_link_clicks,actions,action_values';
+let fbCurrency = null, fbOk = false;
+async function fbGet(path, params) {
+  let url = `https://graph.facebook.com/v21.0/${path}?${new URLSearchParams(params)}`;
+  const out = [];
+  for (let i = 0; i < 60 && url; i++) {
+    const res = await fetchT(url, { headers: { Authorization: `Bearer ${META_TOKEN}` } });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || j.error) throw new Error(`Facebook HTTP ${res.status} ${(j.error?.message || '').slice(0, 160)}`);
+    out.push(...(j.data || []));
+    url = j.paging?.next || null;
+  }
+  fbOk = true;
+  return out;
+}
+const fbAct = (r, k) => num((r.actions || []).find((a) => a.action_type === k)?.value);
+const fbVal = (r, k) => num((r.action_values || []).find((a) => a.action_type === k)?.value);
+const fbRow = (r) => ({
+  spend: r2(num(r.spend)), clicks: num(r.inline_link_clicks), imps: num(r.impressions),
+  lpv: fbAct(r, 'landing_page_view'),
+  ic: fbAct(r, 'initiate_checkout') || fbAct(r, 'offsite_conversion.fb_pixel_initiate_checkout'),
+  purch: fbAct(r, 'purchase') || fbAct(r, 'offsite_conversion.fb_pixel_purchase'),
+  pval: r2(fbVal(r, 'purchase') || fbVal(r, 'offsite_conversion.fb_pixel_purchase')),
+});
+const fbRange = (since, until) => JSON.stringify({ since, until });
+async function fbLoadCurrency() {
+  try { const res = await fetchT(`https://graph.facebook.com/v21.0/act_${META_ACC}?fields=currency`, { headers: { Authorization: `Bearer ${META_TOKEN}` } }); fbCurrency = (await res.json()).currency || null; } catch {}
+}
+// por dia (conta)
+async function fbDays(since, until) {
+  const rows = await fbGet(`act_${META_ACC}/insights`, { fields: FB_FIELDS, time_range: fbRange(since, until), time_increment: 1, limit: 500 });
+  return Object.fromEntries(rows.map((r) => [r.date_start, fbRow(r)]));
+}
+// por dia e campanha
+async function fbCampaignDays(since, until) {
+  const out = {};
+  for (const r of await fbGet(`act_${META_ACC}/insights`, { level: 'campaign', fields: 'campaign_id,campaign_name,' + FB_FIELDS, time_range: fbRange(since, until), time_increment: 1, limit: 500 })) {
+    const x = fbRow(r);
+    if (!(x.spend > 0 || x.clicks > 0)) continue;
+    (out[r.date_start] ||= []).push({ id: String(r.campaign_id), name: r.campaign_name || String(r.campaign_id), spend: x.spend, clicks: x.clicks, imps: x.imps, conv: x.purch, cval: x.pval, ic: x.ic, lpv: x.lpv });
+  }
+  return out;
+}
+// por dia e país: {CC: [gasto, cliques, impressões, compras]}
+async function fbCountryDays(since, until) {
+  const out = {};
+  for (const r of await fbGet(`act_${META_ACC}/insights`, { fields: FB_FIELDS, breakdowns: 'country', time_range: fbRange(since, until), time_increment: 1, limit: 500 })) {
+    const x = fbRow(r);
+    if (!(x.spend > 0 || x.clicks > 0)) continue;
+    (out[r.date_start] ||= {})[String(r.country || '??').toUpperCase()] = [x.spend, x.clicks, x.imps, x.purch];
+  }
+  return out;
+}
+
 // ---------- dados anteriores (incremental) ----------
 async function loadPrevious() {
   try {
@@ -296,11 +354,11 @@ function mockData() {
     return { date, fx, revenue_usd: rev, revenue_brl: rev * fx, gross_usd: rev, sales, sales_front: Math.round(sales * 0.68), upsells: Math.round(sales * 0.32), upsell_usd: rev * 0.45, refunds_usd: Math.random() * 60, refunds: Math.round(Math.random() * 2), untracked: Math.round(Math.random() * 3),
       tab_spend_brl: tab, tab_spend_usd: tab / fx, tab_rev_usd: tabRev, tab_sales: Math.round(tabRev / 55), tab_clicks: Math.round(tab * 4), tab_imps: Math.round(tab * 2000), tab_checkouts: Math.round(tab / 10), tab_pageviews: Math.round(tab * 7),
       mgid_spend: mg, mgid_clicks: Math.round(mg * 12), mgid_imps: Math.round(mg * 5000), mgid_conv: Math.round(mg / 40),
-      ic: Math.round(sales * 7.5), ic_tab: Math.round(tabRev / 55 * 7), ic_mgid: Math.round(sales * 7.5 - tabRev / 55 * 7), countries, tab_ctry, hours, mgid_ctry: Object.fromEntries(Object.entries(CC).map(([c, w]) => [c, [r2(mg * w), Math.round(mg * 12 * w), Math.round(mg * 5000 * w), Math.round(mg / 40 * w)]])),
+      fb_spend: r2(tab * 0.4), fb_clicks: Math.round(tab * 0.4 * 3), fb_imps: Math.round(tab * 0.4 * 400), fb_lpv: Math.round(tab * 0.4 * 2.4), fb_ic: Math.round(tab * 0.4 / 20), fb_purch: Math.round(tab * 0.4 / 250), fb_pval: r2(tab * 0.4 * 1.5), fb_ctry: Object.fromEntries(Object.entries(CC).map(([c, w]) => [c, [r2(tab * 0.4 * w), Math.round(tab * 1.2 * w), Math.round(tab * 160 * w), Math.round(tab * 0.4 / 250 * w)]])), fb_camps: [0, 1, 2].map((i) => ({ id: String(7700 + i), name: `FB | NeuroHoney ${['ABO', 'CBO', 'Advantage+'][i]}`, spend: r2(tab * 0.4 / (i + 1.6)), clicks: Math.round(tab * 1.2 / (i + 1.6)), imps: Math.round(tab * 160 / (i + 1.6)), conv: Math.round(tab * 0.4 / 250 / (i + 1.6)), cval: r2(tab * 0.6 / (i + 1.6)) })), ic: Math.round(sales * 7.5), ic_tab: Math.round(tabRev / 55 * 7), ic_mgid: Math.round(sales * 7.5 - tabRev / 55 * 7), countries, tab_ctry, hours, mgid_ctry: Object.fromEntries(Object.entries(CC).map(([c, w]) => [c, [r2(mg * w), Math.round(mg * 12 * w), Math.round(mg * 5000 * w), Math.round(mg / 40 * w)]])),
       tab_camps: camps.map((c) => ({ id: c.id, name: c.name, spend: r2(tab * c.w / wsum), clicks: Math.round(tab * 4 * c.w / wsum), imps: Math.round(tab * 2000 * c.w / wsum), conv: Math.round(30 * c.w / wsum), cval: 0 })),
       mgid_camps: mcamps.map((c) => ({ id: c.id, name: c.name, spend: r2(mg * c.w / msum), clicks: Math.round(mg * 12 * c.w / msum), imps: Math.round(mg * 5000 * c.w / msum), conv: Math.round(mg / 40 * c.w / msum) })) };
   });
-  return { days, tab_currency: 'BRL', mgid_currency: 'USD' };
+  return { days, tab_currency: 'BRL', mgid_currency: 'USD', fb_currency: 'BRL' };
 }
 
 // ---------- principal ----------
@@ -310,13 +368,14 @@ async function main() {
   if (MOCK) payload = mockData();
   else {
     const hasR = !!env.RATOEIRA_MCP_URL, hasT = !!(env.TABOOLA_CLIENT_ID && env.TABOOLA_CLIENT_SECRET && env.TABOOLA_ACCOUNT_ID), hasM = !!(env.MGID_CLIENT_ID && env.MGID_TOKEN);
+    const hasF = !!(META_TOKEN && META_ACC);
     const prev = await loadPrevious();
     const prevByDate = Object.fromEntries((prev?.days || []).map((d) => [d.date, d]));
     const window = lastDays(HISTORY_DAYS).filter((d) => !START_DATE || d >= START_DATE);
     if (START_DATE) console.log(`Início da operação: ${START_DATE}`);
     const refresh = new Set(window.slice(-REFRESH_DAYS));
     const need = (d, k) => refresh.has(d) || !prevByDate[d] || !prevByDate[d][k];
-    const KEYS = [hasR && 'ok_r2', hasR && 'ok_rt2', hasR && 'ok_ic', hasT && 'ok_tc', hasT && 'ok_tg', hasM && 'ok_m3'].filter(Boolean);
+    const KEYS = [hasR && 'ok_r2', hasR && 'ok_rt2', hasR && 'ok_ic', hasT && 'ok_tc', hasT && 'ok_tg', hasM && 'ok_m3', hasF && 'ok_fb'].filter(Boolean);
     const todo = window.filter((d) => KEYS.some((k) => need(d, k)));
     console.log(`Histórico anterior: ${prev ? Object.keys(prevByDate).length + ' dias' : 'nenhum'}. Atualizando ${todo.length} dia(s).`);
 
@@ -333,6 +392,18 @@ async function main() {
     }
     if (taboolaToken && tcDays.length) {
       try { tabCamps = await taboolaCampaignDays(tcDays[0], tcDays.at(-1)); } catch (e) { logErr('taboola-campanhas', e.message); }
+    }
+
+    // Facebook: três chamadas para o intervalo inteiro (conta, campanhas e países por dia)
+    let fbD = null, fbC = null, fbG = null;
+    const fDays = todo.filter((d) => need(d, 'ok_fb'));
+    if (hasF && fDays.length) {
+      await fbLoadCurrency();
+      try { fbD = await fbDays(fDays[0], fDays.at(-1)); console.log('Facebook OK'); } catch (e) { logErr('facebook', e.message); }
+      if (fbD) {
+        try { fbC = await fbCampaignDays(fDays[0], fDays.at(-1)); } catch (e) { logErr('facebook-campanhas', e.message); }
+        try { fbG = await fbCountryDays(fDays[0], fDays.at(-1)); } catch (e) { logErr('facebook-paises', e.message); }
+      }
     }
 
     // MGID: duas chamadas para o intervalo inteiro (campanhas por dia e países por dia)
@@ -369,6 +440,13 @@ async function main() {
       if (!stopped && taboolaToken && need(date, 'ok_tg')) {
         try { d.tab_ctry = await taboolaCountryDay(date); d.ok_tg = true; } catch (e) { d.ok_tg = false; if (tgErr++ < 2) logErr(`taboola-paises ${date}`, e.message); }
       }
+      if (fbD && need(date, 'ok_fb')) {
+        const x = fbD[date] || { spend: 0, clicks: 0, imps: 0, lpv: 0, ic: 0, purch: 0, pval: 0 };
+        Object.assign(d, { fb_spend: x.spend, fb_clicks: x.clicks, fb_imps: x.imps, fb_lpv: x.lpv, fb_ic: x.ic, fb_purch: x.purch, fb_pval: x.pval });
+        if (fbC) d.fb_camps = fbC[date] || [];
+        if (fbG) d.fb_ctry = fbG[date] || {};
+        d.ok_fb = !!(fbC && fbG);
+      }
       if (mgCamps && need(date, 'ok_m3')) {
         const list = mgCamps[date] || [];
         d.mgid_camps = list; d.ok_m3 = true;
@@ -386,7 +464,7 @@ async function main() {
     for (let i = 0; i < days.length; i++) if (!days[i].fx) days[i].fx = days[i - 1]?.fx || days.find((x) => x.fx)?.fx || 5.5;
     const pending = days.filter((d) => d.partial && window.includes(d.date)).length;
     if (pending) console.log(`Dias ainda incompletos: ${pending}`);
-    payload = { days, tab_currency: taboolaCurrency || prev?.tab_currency || 'BRL', mgid_currency: mgidCurrency || prev?.mgid_currency || MGID_CURRENCY, sources: { ratoeira: !!mcp, taboola: !!taboolaToken, mgid: mgidOk } };
+    payload = { days, fb_currency: fbCurrency || prev?.fb_currency || 'BRL', tab_currency: taboolaCurrency || prev?.tab_currency || 'BRL', mgid_currency: mgidCurrency || prev?.mgid_currency || MGID_CURRENCY, sources: { ratoeira: !!mcp, taboola: !!taboolaToken, mgid: mgidOk, facebook: fbOk } };
   }
 
   payload.meta = { updated_at: new Date().toISOString(), today, tz: TZ, mgid_currency: MGID_CURRENCY, errors, mock: MOCK, history_days: HISTORY_DAYS, start_date: START_DATE || null, daily_goal_brl: Number(env.DAILY_GOAL || 0) || null };
