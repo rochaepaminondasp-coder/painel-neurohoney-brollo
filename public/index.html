@@ -339,7 +339,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 1
       <div class="seg" id="mmetric"><button data-m="roas">ROAS</button><button data-m="profit">Lucro</button><button data-m="cpa">CPA</button><button data-m="epc">EPC</button><button data-m="cpc">CPC</button><button data-m="ctr">CTR</button></div></div>
       <div class="matrix-wrap" id="matrix"></div></div>
     <div class="grid g2 mb">
-      <div class="card"><div class="card-h"><div><h3>Lucro diário por plataforma</h3><div class="sub">Receita da MGID estimada (total − Taboola − Facebook)</div></div><div class="legend"><span><i class="lk" style="background:var(--s1)"></i>Taboola</span><span><i class="lk" style="background:var(--s2)"></i>MGID</span><span><i class="lk" style="background:var(--s4)"></i>Facebook</span></div></div><div class="chart-box sm"><canvas id="c-pprofit"></canvas></div></div>
+      <div class="card"><div class="card-h"><div><h3>Lucro diário por plataforma</h3><div class="sub">Receita de Facebook e MGID dividida pelas compras que cada rede registra</div></div><div class="legend"><span><i class="lk" style="background:var(--s1)"></i>Taboola</span><span><i class="lk" style="background:var(--s2)"></i>MGID</span><span><i class="lk" style="background:var(--s4)"></i>Facebook</span></div></div><div class="chart-box sm"><canvas id="c-pprofit"></canvas></div></div>
       <div class="card"><div class="card-h"><div><h3>Investimento × Faturamento</h3><div class="sub">Por plataforma no período</div></div><div class="legend"><span><i class="dot" style="background:var(--s2)"></i>Investimento</span><span><i class="dot" style="background:var(--s1)"></i>Faturamento</span><span><i class="dot" style="background:var(--s3)"></i>Lucro</span></div></div><div class="chart-box sm"><canvas id="c-pbar"></canvas></div></div>
     </div>
   </section>
@@ -389,7 +389,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 1
       <ul>
         <li><b>Faturamento, vendas, upsells e checkouts</b>: Ratoeira Ads (todas as vendas do projeto, via postback da Zenit).</li>
         <li><b>Investimento</b>: Taboola (API Backstage), MGID (API v2) e Facebook (API de Marketing da Meta).</li>
-        <li><b>Receita Taboola</b>: vendas que a Ratoeira atribuiu ao Taboola. <b>Receita Facebook</b>: compras que vocês enviam ao pixel/API de Conversões (valor do evento Purchase). <b>Receita MGID</b>: faturamento total − Taboola − Facebook (inclui vendas sem origem identificada).</li>
+        <li><b>Receita Taboola</b>: vendas que a Ratoeira atribuiu ao Taboola. <b>Receita Facebook e MGID</b>: o faturamento que a Ratoeira não atribuiu ao Taboola é dividido entre as duas pelas compras que cada rede registra (pixel/API de Conversões do Facebook, conversões da MGID), com os upsells juntos; sem compras registradas, pelo gasto do dia.</li>
         <li><b>Lucro líquido</b> = faturamento − investimento em anúncios. <b>ROAS</b> = faturamento ÷ investimento. <b>CPA</b> = investimento ÷ vendas front. <b>EPC</b> = faturamento ÷ cliques.</li>
         <li><b>≈ estimado</b>: receita e vendas por campanha (e por plataforma em cada país) divididas proporcionalmente às compras que cada rede reporta (ou aos cliques, quando não há compra).</li>
         <li><b>Hoje</b>: atualizado a cada 4 minutos (vendas da Ratoeira sem cache, gasto do Taboola e da MGID). Histórico, campanhas e países: atualização completa a cada ~30 minutos.</li>
@@ -551,13 +551,19 @@ function conv(d) {
 function vals(d) {
   const c = conv(d);
   const tab = d.tab_spend_usd ? d.tab_spend_usd * c.k : c.tab(d.tab_spend_brl || 0), mg = c.mg(d.mgid_spend || 0), fb = c.fb(d.fb_spend || 0);
-  // receita por rede: Taboola = atribuída pela Ratoeira; Facebook = compras que vocês enviam ao pixel/CAPI; MGID = o restante
-  const tabRev = c.usd(d.tab_rev_usd || 0), fbRev = c.fb(d.fb_pval || 0);
-  const revAll = Math.max(c.usd(d.revenue_usd || 0), tabRev + fbRev), mgRev = Math.max(0, revAll - tabRev - fbRev);
-  const tabSales = d.tab_sales || 0, fbSales = d.fb_purch || 0, salesAll = Math.max(d.sales || 0, tabSales + fbSales);
+  // Receita e vendas por rede (todas em US$ da Ratoeira, incluindo upsells):
+  // Taboola = o que a Ratoeira atribui ao Taboola. O restante é dividido entre Facebook e MGID pelas
+  // compras que cada rede registra (pixel/CAPI do Facebook, conversões da MGID); sem compras registradas,
+  // pelo gasto do dia. Rede sem gasto e sem compra não recebe venda.
+  const revAll = c.usd(d.revenue_usd || 0), salesAll = d.sales || 0;
+  const tabRev = Math.min(revAll, c.usd(d.tab_rev_usd || 0)), tabSales = Math.min(salesAll, d.tab_sales || 0);
+  const cF = d.fb_purch || 0, cM = d.mgid_conv || 0;
+  const shF = cF + cM ? cF / (cF + cM) : fb + mg ? fb / (fb + mg) : 0, shM = cF + cM ? cM / (cF + cM) : fb + mg ? mg / (fb + mg) : 0;
+  const restRev = Math.max(0, revAll - tabRev), restSales = Math.max(0, salesAll - tabSales);
+  const fbRev = restRev * shF, mgRev = restRev * shM, fbSales = restSales * shF;
   const n = (x) => (x == null ? NaN : x);
   const v = { date: d.date, fx: c.fx, partial: d.partial, tab, mg, fb, tabRev, mgRev, fbRev, revAll,
-    tabSales, fbSales, mgSales: Math.max(0, salesAll - tabSales - fbSales),
+    tabSales, fbSales, mgSales: restSales * shM, noSrcRev: restRev * (1 - shF - shM),
     tabClicks: d.tab_clicks || 0, tabImps: d.tab_imps || 0, mgClicks: d.mgid_clicks || 0, mgImps: d.mgid_imps || 0, fbClicks: d.fb_clicks || 0, fbImps: d.fb_imps || 0,
     tabPv: n(d.tab_pageviews), fbPv: n(d.fb_lpv), icTab: n(d.ic_tab ?? d.tab_checkouts), icMg: n(d.ic_mgid), icFb: n(d.fb_ic),
     front: Math.max(0, (d.sales_front || 0) + (adj(d).front || 0)), ups: Math.max(0, (d.upsells || 0) + (adj(d).upsells || 0)), refunds: c.usd(d.refunds_usd || 0), upsRev: c.usd((d.upsell_usd || 0) + (adj(d).upsell_usd || 0)), pv: NaN };
@@ -933,7 +939,7 @@ function campaignStats(days) {
   }
   let rows = Object.values(agg).filter((x) => x.spend > 0 || x.clicks > 0);
   for (const net of NETS) {
-    const list = rows.filter((x) => x.net === net), hasVal = list.some((x) => x.cval > 0);
+    const list = rows.filter((x) => x.net === net), hasVal = net !== 'Facebook' && list.some((x) => x.cval > 0);
     const tc = sum(list, 'conv'), tk = sum(list, 'clicks');
     for (const x of list) { const sh = tc ? x.conv / tc : tk ? x.clicks / tk : 0; x.est = !hasVal; x.rev = hasVal ? x.cval : netTot[net].rev * sh; x.sales = hasVal ? x.conv : netTot[net].sales * sh; }
   }
