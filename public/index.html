@@ -575,26 +575,29 @@ function vals(d) {
     v.rev = c.usd(cr[1]); v.sales = cr[0]; v.front = cr[0]; v.ups = NaN; v.ic = NaN;
     v.spend = on.reduce((a, k) => a + parts[k][0], 0); v.clicks = on.reduce((a, k) => a + parts[k][1], 0); v.imps = on.reduce((a, k) => a + (parts[k][2] || 0), 0);
   } else if (state.plat === 'taboola') {
-    Object.assign(v, { rev: tabRev, spend: tab, sales: v.tabSales, front: v.tabSales, ups: NaN, ic: v.icTab, clicks: v.tabClicks, imps: v.tabImps, pv: v.tabPv });
+    Object.assign(v, { rev: tabRev, spend: tab, sales: v.tabSales, front: v.tabSales, ups: NaN, ic: v.icTab, clicks: v.tabClicks, imps: v.tabImps, pv: v.tabPv, pvClicks: v.tabClicks, pvSpend: tab });
   } else if (state.plat === 'mgid') {
     Object.assign(v, { rev: mgRev, spend: mg, sales: v.mgSales, front: v.mgSales, ups: NaN, ic: v.icMg, clicks: v.mgClicks, imps: v.mgImps });
   } else if (state.plat === 'facebook') {
-    Object.assign(v, { rev: fbRev, spend: fb, sales: fbSales, front: fbSales, ups: NaN, ic: v.icFb, clicks: v.fbClicks, imps: v.fbImps, pv: v.fbPv });
+    Object.assign(v, { rev: fbRev, spend: fb, sales: fbSales, front: fbSales, ups: NaN, ic: v.icFb, clicks: v.fbClicks, imps: v.fbImps, pv: v.fbPv, pvClicks: v.fbClicks, pvSpend: fb });
   } else {
     Object.assign(v, { rev: revAll, spend: tab + mg + fb, sales: salesAll, ic: n(d.ic), clicks: v.tabClicks + v.mgClicks + v.fbClicks, imps: v.tabImps + v.mgImps + v.fbImps });
+    // page views: Taboola (Ratoeira) + Facebook (landing page views); a MGID não informa
+    const hT = isFinite(v.tabPv), hF = isFinite(v.fbPv);
+    if (hT || hF) Object.assign(v, { pv: (hT ? v.tabPv : 0) + (hF ? v.fbPv : 0), pvClicks: (hT ? v.tabClicks : 0) + (hF ? v.fbClicks : 0), pvSpend: (hT ? tab : 0) + (hF ? fb : 0) });
   }
   v.profit = v.rev - v.spend;
   return v;
 }
 const sum = (rows, k) => rows.reduce((a, r) => a + (isFinite(r[k]) ? r[k] : 0), 0);
 const sumN = (rows, k) => (rows.some((r) => isFinite(r[k])) ? sum(rows, k) : NaN);
-const TOT_KEYS = ['rev', 'spend', 'profit', 'sales', 'front', 'ups', 'tab', 'mg', 'tabRev', 'mgRev', 'revAll', 'refunds', 'upsRev', 'ic', 'icTab', 'icMg', 'clicks', 'imps', 'pv', 'tabPv', 'tabSales', 'mgSales', 'tabClicks', 'mgClicks', 'tabImps', 'mgImps', 'fb', 'fbRev', 'fbSales', 'fbClicks', 'fbImps', 'icFb', 'fbPv'];
+const TOT_KEYS = ['rev', 'spend', 'profit', 'sales', 'front', 'ups', 'tab', 'mg', 'tabRev', 'mgRev', 'revAll', 'refunds', 'upsRev', 'ic', 'icTab', 'icMg', 'clicks', 'imps', 'pv', 'tabPv', 'tabSales', 'mgSales', 'tabClicks', 'mgClicks', 'tabImps', 'mgImps', 'fb', 'fbRev', 'fbSales', 'fbClicks', 'fbImps', 'icFb', 'fbPv', 'pvClicks', 'pvSpend'];
 function totals(rows) { const T = { days: rows.length }; for (const k of TOT_KEYS) T[k] = sumN(rows, k); return T; }
 function ratios(T) {
   const front = isFinite(T.front) ? T.front : T.sales;
   return { front, roas: div(T.rev, T.spend), cpa: div(T.spend, front), ticket: div(T.rev, front), margin: div(T.profit, T.rev) * 100,
     upr: isFinite(T.ups) ? div(T.ups, T.front) * 100 : NaN, ctr: div(T.clicks, T.imps) * 100, cpc: div(T.spend, T.clicks), epc: div(T.rev, T.clicks),
-    cpm: div(T.spend, T.imps) * 1000, arrival: div(T.pv, T.clicks) * 100, cppv: div(T.spend, T.pv), pvIc: div(T.ic, T.pv) * 100,
+    cpm: div(T.spend, T.imps) * 1000, arrival: div(T.pv, T.pvClicks) * 100, cppv: div(T.pvSpend, T.pv), pvIc: div(T.ic, T.pv) * 100,
     clickIc: div(T.ic, T.clicks) * 100, chk: div(front, T.ic) * 100, cpic: div(T.spend, T.ic), upsShare: div(T.upsRev, T.revAll) * 100 };
 }
 function goal() { const g = state.data.meta.daily_goal_brl; if (!g) return 0; return state.cur === 'BRL' ? g : g / (state.data.days.at(-1)?.fx || 5.5); }
@@ -708,7 +711,7 @@ function renderFunnel(T) {
   const st = [
     { k: 'imps', l: 'Impressões', v: T.imps, col: '#8c8cf5', cost: T.imps ? [moneyP(R.cpm), 'CPM'] : null },
     { k: 'clicks', l: 'Cliques no anúncio', v: T.clicks, col: css('--s1'), cost: T.clicks ? [moneyP(R.cpc), 'CPC'] : null },
-    { k: 'pv', l: 'Page views', v: T.pv, col: '#4fb3d9', cost: T.pv ? [moneyP(R.cppv), 'por page view'] : null },
+    { k: 'pv', l: 'Page views', v: T.pv, col: '#4fb3d9', cost: T.pv ? [moneyP(R.cppv), 'por page view'] : null, sub: state.plat === 'all' && T.mgClicks > 0 ? 'Taboola + Facebook' : '' },
     { k: 'ic', l: 'Initiate checkout', v: T.ic, col: '#f2a93b', cost: T.ic ? [moneyP(R.cpic), 'por checkout'] : null },
     { k: 'sales', l: 'Vendas front', v: front, col: css('--s3'), cost: front ? [money(R.cpa), 'CPA'] : null, sub: `${money(T.rev)} faturados${isFinite(T.ups) && T.ups ? ` · ${intf(T.ups)} upsell${T.ups > 1 ? 's' : ''}` : ''}` },
   ].filter((x) => isFinite(x.v) && (x.k !== 'pv' || x.v > 0));
@@ -717,7 +720,8 @@ function renderFunnel(T) {
   const LBL = { 'imps>clicks': 'CTR', 'clicks>pv': 'Taxa de chegada', 'pv>ic': 'Página → checkout', 'clicks>ic': 'Clique → checkout', 'ic>sales': 'Conversão do checkout', 'clicks>sales': 'Conversão' };
   $('funnel').innerHTML = st.map((x, i) => {
     const w = x.v > 0 ? 18 + 82 * (Math.log10(x.v + 1) / Math.log10(mx + 1)) : 0, prev = st[i - 1];
-    const conn = prev ? `<div class="fconn"><span class="chip">↓ ${LBL[prev.k + '>' + x.k] || 'Conversão'} <b>${prev.v ? pctf(x.v / prev.v * 100, x.v / prev.v < 0.01 ? 2 : 1) : '—'}</b></span></div>` : '';
+    const rate = prev?.k === 'clicks' && x.k === 'pv' ? R.arrival : prev?.v ? x.v / prev.v * 100 : NaN;
+    const conn = prev ? `<div class="fconn"><span class="chip">↓ ${LBL[prev.k + '>' + x.k] || 'Conversão'} <b>${pctf(rate, rate < 1 ? 2 : 1)}</b></span></div>` : '';
     return conn + `<div class="fstage"><div class="fl"><b>${x.l}</b><span>${x.sub || ''}</span></div><div class="fbar-wrap"><div class="fbar" style="width:${w}%;background:${x.col}">${x.v > 0 ? intS(x.v) : '—'}</div></div><div class="fcost">${x.cost ? `<b>${x.cost[0]}</b><span>${x.cost[1]}</span>` : '<span>—</span>'}</div></div>`;
   }).join('') + (!isFinite(T.ic) ? `<div class="note" style="margin-top:10px">${state.country !== 'all' ? 'Initiate checkout não tem quebra por país.' : 'Sem dados de initiate checkout no período.'}</div>` : '');
 }
@@ -730,7 +734,7 @@ function renderTiles(T, P, hasPrev) {
     ['EPC', moneyP(c.epc), D('epc'), 'faturamento ÷ cliques', isFinite(c.epc) && isFinite(c.cpc) ? (c.epc >= c.cpc ? 'pos' : 'neg') : ''],
     ['CPM', moneyP(c.cpm), D('cpm', { lower: true }), 'custo por mil impressões'],
     ...(isFinite(T.pv) && T.pv > 0 ? [
-      ['Taxa de chegada', pctf(c.arrival), D('arrival', { points: true }), 'page views ÷ cliques (quanto do clique chega na página)'],
+      ['Taxa de chegada', pctf(c.arrival), D('arrival', { points: true }), 'page views ÷ cliques (quanto do clique chega na página); só redes que medem page view: Taboola e Facebook'],
       ['Custo por page view', moneyP(c.cppv), D('cppv', { lower: true }), 'investimento ÷ page views'],
       ['Page view → checkout', pctf(c.pvIc), D('pvIc', { points: true }), 'initiate checkout ÷ page views']] : [
       ['Clique → checkout', pctf(c.clickIc, 2), D('clickIc', { points: true }), 'initiate checkout ÷ cliques']]),
