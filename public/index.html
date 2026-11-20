@@ -437,6 +437,15 @@ load().then(loadLive);
 setInterval(load, 10 * 60 * 1000);
 setInterval(loadLive, 4 * 60 * 1000);
 
+// initiate checkouts no total: a Tag da Ratoeira conta todos; quando ela não pega (ex.: checkout da
+// Perfect Pay sem a tag), usa a soma do que cada rede registra (Facebook, Taboola e MGID na Ratoeira)
+function icAll(d, v) {
+  const parts = [v.icTab, v.icMg, v.icFb].filter(isFinite);
+  const soma = parts.length ? parts.reduce((a, b) => a + b, 0) : NaN;
+  const tag = d.ic == null ? NaN : d.ic;
+  return isFinite(tag) && isFinite(soma) ? Math.max(tag, soma) : isFinite(tag) ? tag : soma;
+}
+
 // correções manuais (public/ajustes.json): ex. venda registrada como front que era upsell
 const adj = (d) => (state.adj && state.adj[d.date]) || {};
 
@@ -581,11 +590,12 @@ function vals(d) {
   } else if (state.plat === 'facebook') {
     Object.assign(v, { rev: fbRev, spend: fb, sales: fbSales, front: fbSales, ups: NaN, ic: v.icFb, clicks: v.fbClicks, imps: v.fbImps, pv: v.fbPv, pvClicks: v.fbClicks, pvSpend: fb });
   } else {
-    Object.assign(v, { rev: revAll, spend: tab + mg + fb, sales: salesAll, ic: n(d.ic), clicks: v.tabClicks + v.mgClicks + v.fbClicks, imps: v.tabImps + v.mgImps + v.fbImps });
+    Object.assign(v, { rev: revAll, spend: tab + mg + fb, sales: salesAll, ic: icAll(d, v), clicks: v.tabClicks + v.mgClicks + v.fbClicks, imps: v.tabImps + v.mgImps + v.fbImps });
     // page views: Taboola (Ratoeira) + Facebook (landing page views); a MGID não informa
     const hT = isFinite(v.tabPv), hF = isFinite(v.fbPv);
     if (hT || hF) Object.assign(v, { pv: (hT ? v.tabPv : 0) + (hF ? v.fbPv : 0), pvClicks: (hT ? v.tabClicks : 0) + (hF ? v.fbClicks : 0), pvSpend: (hT ? tab : 0) + (hF ? fb : 0) });
   }
+  v.icTot = icAll(d, v);
   v.profit = v.rev - v.spend;
   return v;
 }
@@ -1075,7 +1085,7 @@ function dayDetail(date) {
 function exportCsv() {
   if (!state.data) return;
   const head = ['data', 'investimento_taboola', 'investimento_mgid', 'investimento_facebook', 'investimento_total', 'cliques', 'impressoes', 'checkouts', 'vendas', 'vendas_front', 'upsells', 'faturamento', 'lucro', 'roas', 'moeda'];
-  const lines = state.data.days.map((d) => { const v = vals(d); return [d.date, v.tab.toFixed(2), v.mg.toFixed(2), v.fb.toFixed(2), (v.tab + v.mg + v.fb).toFixed(2), v.tabClicks + v.mgClicks + v.fbClicks, v.tabImps + v.mgImps + v.fbImps, d.ic ?? '', d.sales || 0, v.front, v.ups, v.revAll.toFixed(2), (v.revAll - v.tab - v.mg - v.fb).toFixed(2), div(v.revAll, v.tab + v.mg + v.fb).toFixed(2), state.cur].join(';'); });
+  const lines = state.data.days.map((d) => { const v = vals(d); return [d.date, v.tab.toFixed(2), v.mg.toFixed(2), v.fb.toFixed(2), (v.tab + v.mg + v.fb).toFixed(2), v.tabClicks + v.mgClicks + v.fbClicks, v.tabImps + v.mgImps + v.fbImps, isFinite(v.icTot) ? v.icTot : '', d.sales || 0, v.front, v.ups, v.revAll.toFixed(2), (v.revAll - v.tab - v.mg - v.fb).toFixed(2), div(v.revAll, v.tab + v.mg + v.fb).toFixed(2), state.cur].join(';'); });
   const blob = new Blob(['﻿' + [head.join(';'), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `painel-neurohoney-${state.data.meta.today}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
