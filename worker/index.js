@@ -114,6 +114,7 @@ class Mcp {
   }
 }
 const pick = (t, k) => { const m = t.match(new RegExp(`"${k}"\\s*:\\s*(-?[0-9.eE+-]+)`)); return m ? +m[1] : 0; };
+const pickN = (t, k) => { const m = t.match(new RegExp(`"${k}"\\s*:\\s*(-?[0-9.eE+-]+)`)); return m ? +m[1] : null; };
 
 async function ratoeiraToday(env, date, taboolaAccount) {
   const mcp = new Mcp(env.RATOEIRA_MCP_URL);
@@ -137,10 +138,10 @@ async function ratoeiraToday(env, date, taboolaAccount) {
   if (hours.length) out.hours = Array.from({ length: 24 }, (_, i) => hours[i] || [0, 0]);
   // receita atribuída ao Taboola
   try {
-    const args = { level: 'account', startDate: date, endDate: date, format: 'json', usarCache: false };
+    const args = { level: 'account', startDate: date, endDate: date, format: 'json', usarCache: false, colunas: ['vendas_sem_upsell_quantidade', 'vendas_upsell_quantidade', 'vendas_upsell_total_valor_dolar'] };
     if (taboolaAccount) args.accountsIds = [taboolaAccount];
     const tt = await mcp.call('management_taboola_ads', args);
-    Object.assign(out, { tab_rev_usd: pick(tt, 'vendas_total_valor_dolar'), tab_sales: pick(tt, 'vendas_total_quantidade'), tab_checkouts: pick(tt, 'checkout_quantidade') });
+    Object.assign(out, { tab_rev_usd: pick(tt, 'vendas_total_valor_dolar'), tab_sales: pick(tt, 'vendas_total_quantidade'), tab_front: pickN(tt, 'vendas_sem_upsell_quantidade'), tab_ups_usd: pickN(tt, 'vendas_upsell_total_valor_dolar'), tab_checkouts: pick(tt, 'checkout_quantidade') });
   } catch {}
   // initiate checkouts (total e por rede)
   try {

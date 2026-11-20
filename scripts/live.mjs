@@ -45,8 +45,15 @@ async function publish(json) {
 
 const dispatch = (workflow) => gh(`/actions/workflows/${workflow}/dispatches`, { method: 'POST', body: JSON.stringify({ ref: 'main' }) });
 
+// versão do código em uso: se o worker/index.js ou este script mudarem no main, o ciclo encerra e religa
+// com a versão nova (sem precisar cancelar nada no GitHub)
+const CODE_FILES = ['worker/index.js', 'scripts/live.mjs'];
+const codeVersion = async (ref = "main") => (await Promise.all(CODE_FILES.map((f) => gh(`/contents/${f}?ref=${ref}`).then((j) => j.sha)))).join(',');
+let myVersion = null;
+try { myVersion = await codeVersion(env.GITHUB_SHA || "main"); } catch (e) { console.log('não consegui ler a versão do código:', e.message); }
+
 const start = Date.now();
-let lastFull = Date.now(), n = 0;
+let lastFull = Date.now(), n = 0, outdated = false;
 console.log(`Ciclo ao vivo: a cada ${STEP / 60000} min por ${LOOP_MIN} min.`);
 while (Date.now() - start < LOOP_MIN * 60000) {
   const t0 = Date.now();
@@ -61,6 +68,7 @@ while (Date.now() - start < LOOP_MIN * 60000) {
     lastFull = Date.now();
     try { await dispatch('atualizar.yml'); console.log(`[${stamp()}] atualização completa disparada`); } catch (e) { console.log('não consegui disparar a atualização completa:', e.message); }
   }
+  try { if (myVersion && (await codeVersion()) !== myVersion) { outdated = true; console.log(`[${stamp()}] código novo no main: religando com a versão nova`); break; } } catch {}
   await sleep(Math.max(5000, STEP - (Date.now() - t0)));
 }
 console.log(`Fim do ciclo (${n} publicações). Religando…`);

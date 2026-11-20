@@ -272,7 +272,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 1
 <body>
 <header class="topbar"><div class="in">
   <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M5 19v-5M10 19v-9M15 19v-6M20 19V6"/></svg></div>
-  <div class="brand"><b>Painel NeuroHoney · Brollo</b><span>Painel diário · native ads</span></div>
+  <div class="brand"><b>Painel NeuroHoney · Brollo</b><span>Painel diário · Facebook, Taboola e MGID</span></div>
   <div class="right">
     <button class="iconbtn" id="dl" title="Exportar histórico (CSV)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></button>
     <span class="live off" id="live"><i></i><span>Carregando…</span></span>
@@ -311,7 +311,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 1
     <div class="grid g4 mb" id="kpis"></div>
     <div class="grid g4 mb" id="kpis2"></div>
     <div class="grid g32 mb">
-      <div class="card"><div class="card-h"><div><h3>Funil do native</h3><div class="sub">Do anúncio até a venda · custo de cada etapa à direita</div></div></div><div id="funnel"></div></div>
+      <div class="card"><div class="card-h"><div><h3>Funil de vendas</h3><div class="sub">Do anúncio até a venda · custo de cada etapa à direita</div></div></div><div id="funnel"></div></div>
       <div class="card"><div class="card-h"><div><h3>Métricas de tráfego</h3><div class="sub">vs período anterior</div></div></div><div class="tiles" id="tiles"></div></div>
     </div>
     <div class="grid g32 mb">
@@ -387,17 +387,17 @@ footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 1
     <div class="card mb settings"><div class="card-h"><div><h3>Fontes de dados</h3><div class="sub">Conexões automáticas</div></div></div><dl id="sources"></dl></div>
     <div class="card mb settings"><div class="card-h"><div><h3>Como os números são calculados</h3></div></div>
       <ul>
-        <li><b>Faturamento, vendas, upsells e checkouts</b>: Ratoeira Ads (todas as vendas do projeto, via postback da Zenit).</li>
+        <li><b>Faturamento, vendas, upsells e checkouts</b>: Ratoeira Ads (todas as vendas do projeto, recebidas pelo postback do checkout). Front e upsell são contados separados: CPA, ticket e conversão do checkout usam só o front.</li>
         <li><b>Investimento</b>: Taboola (API Backstage), MGID (API v2) e Facebook (API de Marketing da Meta).</li>
-        <li><b>Receita Taboola</b>: vendas que a Ratoeira atribuiu ao Taboola. <b>Receita Facebook e MGID</b>: o faturamento que a Ratoeira não atribuiu ao Taboola é dividido entre as duas pelas compras que cada rede registra (pixel/API de Conversões do Facebook, conversões da MGID), com os upsells juntos; sem compras registradas, pelo gasto do dia.</li>
+        <li><b>Receita Taboola</b>: vendas que a Ratoeira atribuiu ao Taboola. <b>Receita Facebook e MGID</b>: o faturamento que a Ratoeira não atribuiu ao Taboola é dividido entre as duas pelas compras front que cada rede registra (pixel/API de Conversões do Facebook, conversões de venda da MGID); sem compras registradas, pelo gasto do dia. O upsell vai para a mesma rede do front que o originou.</li>
         <li><b>Lucro líquido</b> = faturamento − investimento em anúncios. <b>ROAS</b> = faturamento ÷ investimento. <b>CPA</b> = investimento ÷ vendas front. <b>EPC</b> = faturamento ÷ cliques.</li>
         <li><b>≈ estimado</b>: receita e vendas por campanha (e por plataforma em cada país) divididas proporcionalmente às compras que cada rede reporta (ou aos cliques, quando não há compra).</li>
-        <li><b>Hoje</b>: atualizado a cada 4 minutos (vendas da Ratoeira sem cache, gasto do Taboola e da MGID). Histórico, campanhas e países: atualização completa a cada ~30 minutos.</li>
+        <li><b>Hoje</b>: atualizado a cada 4 minutos (vendas da Ratoeira sem cache, gasto do Taboola, da MGID e do Facebook). Histórico, campanhas e países: atualização completa a cada ~30 minutos.</li>
         <li><b>Câmbio</b>: o do dia, calculado a partir dos valores em R$ e US$ da Ratoeira.</li>
       </ul></div>
   </section>
 
-  <footer>Painel NeuroHoney · Brollo · dados: Ratoeira Ads, Taboola e MGID</footer>
+  <footer>Painel NeuroHoney · Brollo · dados: Ratoeira Ads, Facebook, Taboola e MGID</footer>
 </div>
 
 <script>
@@ -448,6 +448,23 @@ function icAll(d, v) {
 
 // correções manuais (public/ajustes.json): ex. venda registrada como front que era upsell
 const adj = (d) => (state.adj && state.adj[d.date]) || {};
+// a contagem de vendas por país da Ratoeira soma front + upsell: estimamos o front com a proporção do dia
+const frontShare = (d) => { const f = Math.max(0, (d.sales_front || 0) + (adj(d).front || 0)), u = Math.max(0, (d.upsells || 0) + (adj(d).upsells || 0)); return f + u ? f / (f + u) : 1; };
+// vendas front de um país: quando as compras por país que as redes registram somam exatamente o front do dia,
+// usa essas compras (exato); senão, estima pela proporção front/upsell do dia
+const ctryFrontCache = new WeakMap();
+function ctryFront(d, cc) {
+  let m = ctryFrontCache.get(d);
+  if (!m) {
+    const f = Math.max(0, (d.sales_front || 0) + (adj(d).front || 0)), pur = {};
+    for (const src of [d.tab_ctry, d.mgid_ctry, d.fb_ctry]) for (const [k, x] of Object.entries(src || {})) pur[k] = (pur[k] || 0) + (x?.[3] || 0);
+    const tot = Object.values(pur).reduce((a, x) => a + x, 0);
+    m = { exact: f > 0 && tot === f, pur };
+    ctryFrontCache.set(d, m);
+  }
+  const s = d.countries?.[cc]?.[0] || 0;
+  return m.exact ? Math.min(s, m.pur[cc] || 0) : s * frontShare(d);
+}
 
 // ao vivo: números de hoje a cada 4 minutos.
 // Fonte 1: worker da Cloudflare (se publicado). Fonte 2: arquivo live.json do branch "live",
@@ -530,6 +547,7 @@ const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v
 const addDays = (iso, n) => { const d = dObj(iso); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const hhmm = (iso) => new Date(iso).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' });
 const NETS = ['Taboola', 'MGID', 'Facebook'];
+const PLAT_NAME = { taboola: 'Taboola', mgid: 'MGID', facebook: 'Facebook' };
 const NETV = { Taboola: ['--s1', 'TB'], MGID: ['--s2', 'MG'], Facebook: ['--s4', 'FB'] };
 const netVar = (net) => (NETV[net] || NETV.Taboola)[0];
 const pcol = (net) => css(netVar(net));
@@ -564,31 +582,45 @@ function vals(d) {
   // Taboola = o que a Ratoeira atribui ao Taboola. O restante é dividido entre Facebook e MGID pelas
   // compras que cada rede registra (pixel/CAPI do Facebook, conversões da MGID); sem compras registradas,
   // pelo gasto do dia. Rede sem gasto e sem compra não recebe venda.
-  const revAll = c.usd(d.revenue_usd || 0), salesAll = d.sales || 0;
+  // Total do dia (Ratoeira), com as correções manuais de front/upsell
+  const A = adj(d);
+  const revAll = c.usd(d.revenue_usd || 0);
+  const frontAll = Math.max(0, (d.sales_front || 0) + (A.front || 0)), upsAll = Math.max(0, (d.upsells || 0) + (A.upsells || 0));
+  const salesAll = frontAll + upsAll, upsRevAll = c.usd((d.upsell_usd || 0) + (A.upsell_usd || 0));
+  // Taboola: o que a Ratoeira atribui a ele. "vendas" da Ratoeira soma front + upsell; quando ela não separa,
+  // divide na mesma proporção front/upsell do dia.
   const tabRev = Math.min(revAll, c.usd(d.tab_rev_usd || 0)), tabSales = Math.min(salesAll, d.tab_sales || 0);
+  const tabFront = Math.min(frontAll, d.tab_front != null ? d.tab_front : salesAll ? tabSales * frontAll / salesAll : 0), tabUps = Math.min(upsAll, Math.max(0, tabSales - tabFront));
+  const tabUpsRev = Math.min(upsRevAll, d.tab_ups_usd != null ? c.usd(d.tab_ups_usd) : upsAll ? upsRevAll * tabUps / upsAll : 0);
+  // O restante é dividido entre Facebook e MGID pelas compras (front) que cada rede registra (pixel/CAPI do
+  // Facebook, conversões de venda da MGID); sem compras registradas, pelo gasto do dia. O upsell segue o front:
+  // quem comprou o front de uma rede é quem compra o upsell. Rede sem gasto e sem compra não recebe venda.
   const cF = d.fb_purch || 0, cM = d.mgid_conv || 0;
   const shF = cF + cM ? cF / (cF + cM) : fb + mg ? fb / (fb + mg) : 0, shM = cF + cM ? cM / (cF + cM) : fb + mg ? mg / (fb + mg) : 0;
-  const restRev = Math.max(0, revAll - tabRev), restSales = Math.max(0, salesAll - tabSales);
-  const fbRev = restRev * shF, mgRev = restRev * shM, fbSales = restSales * shF;
+  const restRev = Math.max(0, revAll - tabRev), restFront = Math.max(0, frontAll - tabFront), restUps = Math.max(0, upsAll - tabUps), restUpsRev = Math.max(0, upsRevAll - tabUpsRev);
+  const fbRev = restRev * shF, mgRev = restRev * shM;
   const n = (x) => (x == null ? NaN : x);
   const v = { date: d.date, fx: c.fx, partial: d.partial, tab, mg, fb, tabRev, mgRev, fbRev, revAll,
-    tabSales, fbSales, mgSales: restSales * shM, noSrcRev: restRev * (1 - shF - shM),
+    tabFront, tabUps, tabSales: tabFront + tabUps, tabUpsRev,
+    fbFront: restFront * shF, fbUps: restUps * shF, fbSales: (restFront + restUps) * shF, fbUpsRev: restUpsRev * shF,
+    mgFront: restFront * shM, mgUps: restUps * shM, mgSales: (restFront + restUps) * shM, mgUpsRev: restUpsRev * shM,
+    noSrcRev: restRev * (1 - shF - shM),
     tabClicks: d.tab_clicks || 0, tabImps: d.tab_imps || 0, mgClicks: d.mgid_clicks || 0, mgImps: d.mgid_imps || 0, fbClicks: d.fb_clicks || 0, fbImps: d.fb_imps || 0,
     tabPv: n(d.tab_pageviews), fbPv: n(d.fb_lpv), icTab: n(d.ic_tab ?? d.tab_checkouts), icMg: n(d.ic_mgid), icFb: n(d.fb_ic),
-    front: Math.max(0, (d.sales_front || 0) + (adj(d).front || 0)), ups: Math.max(0, (d.upsells || 0) + (adj(d).upsells || 0)), refunds: c.usd(d.refunds_usd || 0), upsRev: c.usd((d.upsell_usd || 0) + (adj(d).upsell_usd || 0)), pv: NaN };
+    front: frontAll, ups: upsAll, refunds: c.usd(d.refunds_usd || 0), upsRev: upsRevAll, pv: NaN };
   const cc = state.country;
   if (cc !== 'all') {
     const cr = d.countries?.[cc] || [0, 0], tc = d.tab_ctry?.[cc] || [0, 0, 0, 0], mc = d.mgid_ctry?.[cc] || [0, 0, 0, 0], fc = d.fb_ctry?.[cc] || [0, 0, 0, 0];
     const parts = { Taboola: [c.tab(tc[0]), tc[1], tc[2]], MGID: [c.mg(mc[0]), mc[1], mc[2]], Facebook: [c.fb(fc[0]), fc[1], fc[2]] };
     const on = NETS.filter(platOn);
-    v.rev = c.usd(cr[1]); v.sales = cr[0]; v.front = cr[0]; v.ups = NaN; v.ic = NaN;
+    v.rev = c.usd(cr[1]); v.sales = cr[0]; v.front = ctryFront(d, cc); v.ups = NaN; v.upsRev = NaN; v.ic = NaN;
     v.spend = on.reduce((a, k) => a + parts[k][0], 0); v.clicks = on.reduce((a, k) => a + parts[k][1], 0); v.imps = on.reduce((a, k) => a + (parts[k][2] || 0), 0);
   } else if (state.plat === 'taboola') {
-    Object.assign(v, { rev: tabRev, spend: tab, sales: v.tabSales, front: v.tabSales, ups: NaN, ic: v.icTab, clicks: v.tabClicks, imps: v.tabImps, pv: v.tabPv, pvClicks: v.tabClicks, pvSpend: tab });
+    Object.assign(v, { rev: tabRev, spend: tab, sales: v.tabSales, front: tabFront, ups: tabUps, upsRev: tabUpsRev, ic: v.icTab, clicks: v.tabClicks, imps: v.tabImps, pv: v.tabPv, pvClicks: v.tabClicks, pvSpend: tab });
   } else if (state.plat === 'mgid') {
-    Object.assign(v, { rev: mgRev, spend: mg, sales: v.mgSales, front: v.mgSales, ups: NaN, ic: v.icMg, clicks: v.mgClicks, imps: v.mgImps });
+    Object.assign(v, { rev: mgRev, spend: mg, sales: v.mgSales, front: v.mgFront, ups: v.mgUps, upsRev: v.mgUpsRev, ic: v.icMg, clicks: v.mgClicks, imps: v.mgImps });
   } else if (state.plat === 'facebook') {
-    Object.assign(v, { rev: fbRev, spend: fb, sales: fbSales, front: fbSales, ups: NaN, ic: v.icFb, clicks: v.fbClicks, imps: v.fbImps, pv: v.fbPv, pvClicks: v.fbClicks, pvSpend: fb });
+    Object.assign(v, { rev: fbRev, spend: fb, sales: v.fbSales, front: v.fbFront, ups: v.fbUps, upsRev: v.fbUpsRev, ic: v.icFb, clicks: v.fbClicks, imps: v.fbImps, pv: v.fbPv, pvClicks: v.fbClicks, pvSpend: fb });
   } else {
     Object.assign(v, { rev: revAll, spend: tab + mg + fb, sales: salesAll, ic: icAll(d, v), clicks: v.tabClicks + v.mgClicks + v.fbClicks, imps: v.tabImps + v.mgImps + v.fbImps });
     // page views: Taboola (Ratoeira) + Facebook (landing page views); a MGID não informa
@@ -601,14 +633,14 @@ function vals(d) {
 }
 const sum = (rows, k) => rows.reduce((a, r) => a + (isFinite(r[k]) ? r[k] : 0), 0);
 const sumN = (rows, k) => (rows.some((r) => isFinite(r[k])) ? sum(rows, k) : NaN);
-const TOT_KEYS = ['rev', 'spend', 'profit', 'sales', 'front', 'ups', 'tab', 'mg', 'tabRev', 'mgRev', 'revAll', 'refunds', 'upsRev', 'ic', 'icTab', 'icMg', 'clicks', 'imps', 'pv', 'tabPv', 'tabSales', 'mgSales', 'tabClicks', 'mgClicks', 'tabImps', 'mgImps', 'fb', 'fbRev', 'fbSales', 'fbClicks', 'fbImps', 'icFb', 'fbPv', 'pvClicks', 'pvSpend'];
+const TOT_KEYS = ['rev', 'spend', 'profit', 'sales', 'front', 'ups', 'tab', 'mg', 'tabRev', 'mgRev', 'revAll', 'refunds', 'upsRev', 'ic', 'icTab', 'icMg', 'clicks', 'imps', 'pv', 'tabPv', 'tabSales', 'mgSales', 'tabClicks', 'mgClicks', 'tabImps', 'mgImps', 'fb', 'fbRev', 'fbSales', 'tabFront', 'tabUps', 'fbFront', 'fbUps', 'mgFront', 'mgUps', 'fbClicks', 'fbImps', 'icFb', 'fbPv', 'pvClicks', 'pvSpend'];
 function totals(rows) { const T = { days: rows.length }; for (const k of TOT_KEYS) T[k] = sumN(rows, k); return T; }
 function ratios(T) {
   const front = isFinite(T.front) ? T.front : T.sales;
   return { front, roas: div(T.rev, T.spend), cpa: div(T.spend, front), ticket: div(T.rev, front), margin: div(T.profit, T.rev) * 100,
     upr: isFinite(T.ups) ? div(T.ups, T.front) * 100 : NaN, ctr: div(T.clicks, T.imps) * 100, cpc: div(T.spend, T.clicks), epc: div(T.rev, T.clicks),
     cpm: div(T.spend, T.imps) * 1000, arrival: div(T.pv, T.pvClicks) * 100, cppv: div(T.pvSpend, T.pv), pvIc: div(T.ic, T.pv) * 100,
-    clickIc: div(T.ic, T.clicks) * 100, chk: div(front, T.ic) * 100, cpic: div(T.spend, T.ic), upsShare: div(T.upsRev, T.revAll) * 100 };
+    clickIc: div(T.ic, T.clicks) * 100, chk: div(front, T.ic) * 100, cpic: div(T.spend, T.ic), upsShare: div(T.upsRev, T.rev) * 100 };
 }
 function goal() { const g = state.data.meta.daily_goal_brl; if (!g) return 0; return state.cur === 'BRL' ? g : g / (state.data.days.at(-1)?.fx || 5.5); }
 const fullView = () => state.plat === 'all' && state.country === 'all';
@@ -672,7 +704,7 @@ function render() {
   const at = new Date(meta.updated_at);
   $('banner').innerHTML = `<div class="banner${errs.length ? ' warn' : ''}"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span><div style="min-width:0">
     <b>Última atualização: ${dLong(at.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }))} às ${hhmm(meta.updated_at)}${state.live ? ` · hoje ao vivo às ${hhmm(state.live.updated_at)}` : ''}</b>
-    <span>${state.country !== 'all' ? `Filtrando por ${flag(state.country)} <b style="display:inline">${esc(cname(state.country))}</b>: faturamento de todas as fontes no país × investimento ${state.plat === 'all' ? 'das plataformas' : state.plat === 'taboola' ? 'do Taboola' : 'da MGID'} no país. ` : ''}Você está vendo o painel compartilhado. Os dados atualizam sozinhos.</span>
+    <span>${state.country !== 'all' ? `Filtrando por ${flag(state.country)} <b style="display:inline">${esc(cname(state.country))}</b>: faturamento de todas as fontes no país × investimento ${state.plat === 'all' ? 'das plataformas' : { taboola: 'do Taboola', mgid: 'da MGID', facebook: 'do Facebook' }[state.plat]} no país. ` : ''}Você está vendo o painel compartilhado. Os dados atualizam sozinhos.</span>
     ${errs.length ? `<details><summary>⚠ ${errs.length} aviso(s) na última atualização</summary><ul>${errs.map((e) => `<li><b style="display:inline">${esc(e.src)}</b>: ${esc(e.msg)}</li>`).join('')}</ul></details>` : ''}</div></div>`;
 
   const rows = inRange(r).map(vals);
@@ -710,10 +742,10 @@ function renderOverview(rows, r) {
     const cls = o.color ? (v >= 0 ? 'pos' : 'neg') : o.roas ? (v >= 1 ? 'pos' : 'neg') : '';
     return `<div class="mcard${o.hl ? ' hl' + (v < 0 ? ' loss' : '') : ''}"><div class="mhead"><span class="ico" style="color:var(${TINT[key]});background:color-mix(in srgb, var(${TINT[key]}) 16%, transparent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[key]}</svg></span>${label}</div><div class="mval ${cls}">${dash(v, fmt)}</div><div class="pills">${pills.join('') || '<span class="pill">sem comparação</span>'}</div></div>`;
   };
-  const platLabel = { all: '', taboola: ' · Taboola', mgid: ' · MGID (est.)' }[state.plat];
+  const platLabel = { taboola: ' · Taboola', mgid: ' · MGID (est.)', facebook: ' · Facebook' }[state.plat] || '';
   $('kpis').innerHTML = card('profit', 'Lucro líquido', money, { showPrev: true, color: true, hl: true }) + card('rev', 'Faturamento' + platLabel, money, { showPrev: true }) + card('spend', 'Investimento em tráfego', money, { showPrev: true }) + card('roas', 'ROAS', xf, { roas: true });
   $('kpis2').innerHTML = card('front', 'Vendas front', intf, { showPrev: true }) + card('cpa', 'CPA (custo por venda)', money, { lower: true }) + card('ticket', 'Ticket médio (c/ upsell)', money, {}) +
-    card('upr', 'Conversão de upsell', (v) => pctf(v), { points: true, extra: isFinite(T.ups) ? `${intf(T.ups)} upsells` : 'só no total geral' });
+    card('upr', 'Conversão de upsell', (v) => pctf(v), { points: true, extra: isFinite(T.ups) ? `${intf(T.ups)} upsell${Math.round(T.ups) === 1 ? '' : 's'}` : 'sem quebra por país' });
   renderFunnel(T); renderTiles(T, P, hasPrev); renderInsights(rows, r); renderOverviewCharts(r); renderCalendar(); renderCountryPie(rows, r);
 }
 function renderFunnel(T) {
@@ -737,7 +769,6 @@ function renderFunnel(T) {
 }
 function renderTiles(T, P, hasPrev) {
   const c = ratios(T), p = ratios(P), D = (k, o) => (hasPrev ? delta(c[k], p[k], o) : '') || '<span class="pill">—</span>';
-  const all = fullView();
   const tiles = [
     ['CTR do anúncio', pctf(c.ctr, 2), D('ctr', { points: true }), 'cliques ÷ impressões'],
     ['CPC médio', moneyP(c.cpc), D('cpc', { lower: true }), 'investimento ÷ cliques'],
@@ -750,13 +781,13 @@ function renderTiles(T, P, hasPrev) {
       ['Clique → checkout', pctf(c.clickIc, 2), D('clickIc', { points: true }), 'initiate checkout ÷ cliques']]),
     ['Conversão do checkout', pctf(c.chk), D('chk', { points: true }), 'vendas front ÷ initiate checkouts'],
     ['Custo por checkout', moneyP(c.cpic), D('cpic', { lower: true }), 'investimento ÷ initiate checkout'],
-    ['Taxa de upsell', all ? pctf(c.upr) : '—', all ? D('upr', { points: true }) : '<span class="pill">só no total</span>', 'vendas de upsell ÷ vendas front'],
-    ['Faturamento upsell', all ? money(T.upsRev) : '—', all ? `<span class="pill">${pctf(c.upsShare, 0)} do faturamento</span>` : '<span class="pill">só no total</span>', 'quanto do faturamento veio de upsell'],
+    ['Taxa de upsell', pctf(c.upr), isFinite(c.upr) ? D('upr', { points: true }) : `<span class="pill">${state.country !== 'all' ? 'sem quebra por país' : 'sem vendas front'}</span>`, 'vendas de upsell ÷ vendas front'],
+    ['Faturamento upsell', isFinite(T.upsRev) ? money(T.upsRev) : '—', isFinite(T.upsRev) ? (T.rev ? `<span class="pill">${pctf(c.upsShare, 0)} do faturamento</span>` : '<span class="pill">sem faturamento</span>') : '<span class="pill">sem quebra por país</span>', 'quanto do faturamento veio de upsell'],
   ];
   $('tiles').innerHTML = tiles.map(([l, v, d, h, cls]) => `<div class="tile"><small>${l} <span class="qm" title="${esc(h)}">?</span></small><div class="tv ${cls || ''}">${v}</div>${d}</div>`).join('');
 }
 function renderInsights(rows, r) {
-  $('insSub').textContent = `${shortDate(r[0])} a ${shortDate(r[1])}` + (state.plat !== 'all' ? ' · ' + (state.plat === 'mgid' ? 'MGID' : 'Taboola') : '') + (state.country !== 'all' ? ' · ' + cname(state.country) : '');
+  $('insSub').textContent = `${shortDate(r[0])} a ${shortDate(r[1])}` + (state.plat !== 'all' ? ' · ' + PLAT_NAME[state.plat] : '') + (state.country !== 'all' ? ' · ' + cname(state.country) : '');
   const days = rows.filter((v) => isFinite(v.profit) && (v.spend || v.rev));
   if (!days.length) { $('insights').innerHTML = '<div class="note">Nenhum dia com dados neste período.</div>'; return; }
   const row = (ic, col, title, sub, right) => `<div class="ins-row"><span class="ic" style="background:color-mix(in srgb, var(${col}) 16%, transparent);color:var(${col})">${ic}</span><div style="min-width:0"><b>${title}</b><span class="s">${sub}</span></div><div class="r">${right}</div></div>`;
@@ -857,8 +888,9 @@ function renderCountryPie(rows, r) {
 /* ================= PLATAFORMAS ================= */
 function platformStats(rows) {
   const T = totals(rows);
-  const mk = (net, spend, rev, sales, clicks, imps, ic, pv) => ({ net, spend, rev, sales, clicks, imps, ic, pv, profit: rev - spend, roas: div(rev, spend), cpa: div(spend, sales), cpc: div(spend, clicks), epc: div(rev, clicks), ctr: div(clicks, imps) * 100, chk: div(sales, ic) * 100, cppv: div(spend, pv) });
-  return [mk('Taboola', T.tab, T.tabRev, T.tabSales, T.tabClicks, T.tabImps, T.icTab, T.tabPv), mk('MGID', T.mg, T.mgRev, T.mgSales, T.mgClicks, T.mgImps, T.icMg, NaN), mk('Facebook', T.fb, T.fbRev, T.fbSales, T.fbClicks, T.fbImps, T.icFb, T.fbPv)];
+  const mk = (net, spend, rev, sales, ups, clicks, imps, ic, pv) => ({ net, spend, rev, sales, ups, clicks, imps, ic, pv, profit: rev - spend, roas: div(rev, spend), cpa: div(spend, sales), cpc: div(spend, clicks), epc: div(rev, clicks), ctr: div(clicks, imps) * 100, chk: div(sales, ic) * 100, cppv: div(spend, pv) });
+  // "sales" = vendas front (CPA e conversão do checkout usam o front); "ups" = upsells da rede
+  return [mk('Taboola', T.tab, T.tabRev, T.tabFront, T.tabUps, T.tabClicks, T.tabImps, T.icTab, T.tabPv), mk('MGID', T.mg, T.mgRev, T.mgFront, T.mgUps, T.mgClicks, T.mgImps, T.icMg, NaN), mk('Facebook', T.fb, T.fbRev, T.fbFront, T.fbUps, T.fbClicks, T.fbImps, T.icFb, T.fbPv)];
 }
 function statusTag(o, best) {
   if (!o.spend) return '<span class="tag2 neutral">Sem investimento</span>';
@@ -879,7 +911,7 @@ function renderPlatforms(rows, r) {
   $('pcards').innerHTML = ps.map((o, i) => `<div class="card rcard"><span class="rank">#${i + 1}</span>
     <div class="c-h">${pbadge(o.net, true)}<div><b>${o.net}</b>${statusTag(o, best)}</div></div>
     <div><span class="big ${o.profit >= 0 ? 'pos' : 'neg'}">${o.net === 'MGID' ? '≈ ' : ''}${money(o.profit)}</span></div><div class="note">lucro · ${pctf(div(o.spend, totSpend) * 100, 0)} da verba${o.net === 'MGID' ? ' · receita estimada' : ''}</div>
-    ${mstats([['Faturamento', moneyS(o.rev)], ['Investimento', moneyS(o.spend)], ['ROAS', xf(o.roas), isFinite(o.roas) ? (o.roas >= 1 ? 'pos' : 'neg') : ''], ['Vendas', intf(o.sales)], ['CPA', dash(o.cpa, money)], ['CPC', moneyP(o.cpc)], ['EPC', moneyP(o.epc), isFinite(o.epc) && isFinite(o.cpc) ? (o.epc >= o.cpc ? 'pos' : 'neg') : ''], ['CTR', pctf(o.ctr, 2)], ['Page views', isFinite(o.pv) ? intf(o.pv) : '—'], ['Custo/page view', moneyP(o.cppv)], ['Initiate checkout', intf(o.ic)], ['Conv. checkout', pctf(o.chk)]])}</div>`).join('') || '<div class="card note">Nenhum dado de plataforma no período.</div>';
+    ${mstats([['Faturamento', moneyS(o.rev)], ['Investimento', moneyS(o.spend)], ['ROAS', xf(o.roas), isFinite(o.roas) ? (o.roas >= 1 ? 'pos' : 'neg') : ''], ['Vendas front', intf(o.sales)], ['Upsells', isFinite(o.ups) ? intf(o.ups) : '—'], ['CPA', dash(o.cpa, money)], ['CPC', moneyP(o.cpc)], ['EPC', moneyP(o.epc), isFinite(o.epc) && isFinite(o.cpc) ? (o.epc >= o.cpc ? 'pos' : 'neg') : ''], ['CTR', pctf(o.ctr, 2)], ['Page views', isFinite(o.pv) ? intf(o.pv) : '—'], ['Custo/page view', moneyP(o.cppv)], ['Initiate checkout', intf(o.ic)], ['Conv. checkout', pctf(o.chk)]])}</div>`).join('') || '<div class="card note">Nenhum dado de plataforma no período.</div>';
   renderMatrix(inRange(r));
   const ctx = contextRows(r), labels = ctx.map((v) => shortDate(v.date));
   chart('pprofit', 'c-pprofit', { type: 'line', data: { labels, datasets: [
@@ -908,7 +940,7 @@ function matrixCells(days) {
       for (const x of rowsN) {
         if (!(x.sp || x.cl)) continue;
         const sh = cvT ? x.cv / cvT : spT ? x.sp / spT : 0, y = cell(x.net, cc);
-        y.spend += x.sp; y.clicks += x.cl; y.imps += x.im; y.rev += rev * sh; y.sales += cr[0] * sh;
+        y.spend += x.sp; y.clicks += x.cl; y.imps += x.im; y.rev += rev * sh; y.sales += ctryFront(d, cc) * sh;
       }
     }
   }
@@ -942,7 +974,7 @@ function campaignStats(days) {
   const agg = {}, netTot = { Taboola: { rev: 0, sales: 0 }, MGID: { rev: 0, sales: 0 }, Facebook: { rev: 0, sales: 0 } };
   for (const d of days) {
     const v = vals(d), c = conv(d);
-    netTot.Taboola.rev += v.tabRev; netTot.Taboola.sales += v.tabSales; netTot.MGID.rev += v.mgRev; netTot.MGID.sales += v.mgSales; netTot.Facebook.rev += v.fbRev; netTot.Facebook.sales += v.fbSales;
+    netTot.Taboola.rev += v.tabRev; netTot.Taboola.sales += v.tabFront; netTot.MGID.rev += v.mgRev; netTot.MGID.sales += v.mgFront; netTot.Facebook.rev += v.fbRev; netTot.Facebook.sales += v.fbFront;
     const add = (net, list, f) => { for (const x of list || []) {
       const a = (agg[net + x.id] ||= { net, id: x.id, name: x.name, spend: 0, clicks: 0, imps: 0, conv: 0, cval: 0, byDay: {} });
       const sp = f(x.spend || 0); a.name = x.name || a.name; a.spend += sp; a.clicks += x.clicks || 0; a.imps += x.imps || 0; a.conv += x.conv || 0; if (x.ic != null) a.ic = (a.ic || 0) + x.ic; a.cval += f(x.cval || 0);
@@ -1021,7 +1053,7 @@ function countryStats(days) {
   const blank = (cc) => ({ cc, sales: 0, rev: 0, spend: 0, tab: 0, mg: 0, fb: 0, clicks: 0, imps: 0 });
   for (const d of days) {
     const c = conv(d);
-    for (const [cc, [s, rv]] of Object.entries(d.countries || {})) { const a = (agg[cc] ||= blank(cc)); a.sales += s; a.rev += c.usd(rv); }
+    for (const [cc, [s, rv]] of Object.entries(d.countries || {})) { const a = (agg[cc] ||= blank(cc)); a.sales += ctryFront(d, cc); a.rev += c.usd(rv); }
     if (platOn('Taboola')) for (const [cc, t] of Object.entries(d.tab_ctry || {})) { const a = (agg[cc] ||= blank(cc)); const v = c.tab(t[0]); a.tab += v; a.spend += v; a.clicks += t[1]; a.imps += t[2] || 0; }
     if (platOn('MGID')) for (const [cc, t] of Object.entries(d.mgid_ctry || {})) { const a = (agg[cc] ||= blank(cc)); const v = c.mg(t[0]); a.mg += v; a.spend += v; a.clicks += t[1]; a.imps += t[2] || 0; }
     if (platOn('Facebook')) for (const [cc, t] of Object.entries(d.fb_ctry || {})) { const a = (agg[cc] ||= blank(cc)); const v = c.fb(t[0]); a.fb += v; a.spend += v; a.clicks += t[1]; a.imps += t[2] || 0; }
@@ -1033,11 +1065,11 @@ function renderCountries(rows, r) {
   const cs = countryStats(days).filter((x) => x.rev > 0 || x.spend > 0).sort((a, b) => b.profit - a.profit);
   const totS = sum(cs, 'spend');
   // onde colocar a verba
-  const pos = cs.filter((x) => x.spend > 0 && x.profit > 0), neg = cs.filter((x) => x.spend > 0 && x.profit < 0), totP = sum(pos, 'profit');
+  const pos = cs.filter((x) => x.spend > 0 && x.profit > 0), negAll = cs.filter((x) => x.spend > 0 && x.profit < 0).sort((a, b) => a.profit - b.profit), neg = negAll.filter((x) => x.spend >= totS * 0.01).slice(0, 10), negRest = negAll.length - neg.length, totP = sum(pos, 'profit');
   $('alloc').innerHTML = !pos.length ? `<div class="note">${cs.some((x) => x.spend > 0) ? 'Nenhum país fechou no lucro neste período — vale revisar criativos, presell e oferta antes de redistribuir a verba.' : 'Sem investimento por país no período.'}</div>` :
     `<div class="alloc">${pos.map((x, i) => `<div style="flex:${x.profit / totP};background:${PALETTE[i % 8]}" title="${esc(cname(x.cc))}: ${pctf(x.profit / totP * 100, 0)}">${x.profit / totP > 0.09 ? esc(cname(x.cc)) + ' ' + pctf(x.profit / totP * 100, 0) : ''}</div>`).join('')}</div>
     ${pos.map((x, i) => `<div class="aitem"><span class="dot" style="background:${PALETTE[i % 8]}"></span>${ccb(x.cc)}<span><b>${esc(cname(x.cc))}</b> <span class="note">— hoje recebe ${pctf(x.spend / totS * 100, 0)} da verba · ROAS ${xf(x.roas)}</span></span><b>${pctf(x.profit / totP * 100, 0)}</b></div>`).join('')}
-    ${neg.length ? `<div class="aitem"><span></span><span class="neg">⚠</span><span class="note" style="grid-column:3 / -1">Em prejuízo no período: <b style="color:var(--ink)">${neg.map((x) => esc(cname(x.cc))).join(', ')}</b>. Considere reduzir, bloquear sites ruins ou testar novos criativos.</span></div>` : ''}`;
+    ${neg.length ? `<div class="aitem"><span></span><span class="neg">⚠</span><span class="note" style="grid-column:3 / -1">Em prejuízo no período: <b style="color:var(--ink)">${neg.map((x) => esc(cname(x.cc))).join(', ')}</b>${negRest ? ` e mais ${negRest} com gasto pequeno` : ''}. Considere reduzir, bloquear sites ruins ou testar novos criativos.</span></div>` : ''}`;
   // cartões por país
   const best = cs.filter((o) => isFinite(o.roas)).sort((a, b) => b.roas - a.roas)[0];
   const mc = matrixCells(days);

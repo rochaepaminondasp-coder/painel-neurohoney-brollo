@@ -88,6 +88,10 @@ class Mcp {
 
 // As respostas podem vir truncadas (limite de 25k chars), então lemos campos por regex.
 const pick = (text, key) => { const m = text.match(new RegExp(`"${key}"\\s*:\\s*(-?[0-9.eE+-]+)`)); return m ? +m[1] : 0; };
+// igual ao pick, mas devolve null quando o campo não existe (para não confundir "sem dado" com zero)
+const pickN = (text, key) => { const m = text.match(new RegExp(`"${key}"\\s*:\\s*(-?[0-9.eE+-]+)`)); return m ? +m[1] : null; };
+// colunas extras do Taboola na Ratoeira: front e upsell separados (o "vendas_total" soma os dois)
+const TAB_COLS = ['vendas_sem_upsell_quantidade', 'vendas_upsell_quantidade', 'vendas_upsell_total_valor_dolar'];
 
 async function ratoeiraDay(mcp, date) {
   const args = { periodoAtual: { dataInicio: date, dataFim: date }, format: 'json', incluirGraficos: true };
@@ -119,7 +123,7 @@ async function ratoeiraDay(mcp, date) {
 }
 
 async function ratoeiraTaboolaDay(mcp, date) {
-  const args = { level: 'account', startDate: date, endDate: date, format: 'json' };
+  const args = { level: 'account', startDate: date, endDate: date, format: 'json', colunas: TAB_COLS };
   // usa o account_id resolvido pela API do Taboola (o secret pode estar em outro formato)
   if (taboolaAccount) args.accountsIds = [taboolaAccount];
   const t = await withRetry(() => mcp.call('management_taboola_ads', args), 4);
@@ -133,6 +137,8 @@ async function ratoeiraTaboolaDay(mcp, date) {
     tab_spend_usd: pick(t, 'custo_total_valor_dolar'),
     tab_rev_usd: pick(t, 'vendas_total_valor_dolar'),
     tab_sales: pick(t, 'vendas_total_quantidade'),
+    tab_front: pickN(t, 'vendas_sem_upsell_quantidade'),
+    tab_ups_usd: pickN(t, 'vendas_upsell_total_valor_dolar'),
     tab_clicks: pick(t, 'cliques_no_anuncio_quantidade'),
     tab_imps: pick(t, 'impressoes_quantidade'),
     tab_checkouts: pick(t, 'checkout_quantidade'),
@@ -375,7 +381,7 @@ async function main() {
     if (START_DATE) console.log(`Início da operação: ${START_DATE}`);
     const refresh = new Set(window.slice(-REFRESH_DAYS));
     const need = (d, k) => refresh.has(d) || !prevByDate[d] || !prevByDate[d][k];
-    const KEYS = [hasR && 'ok_r2', hasR && 'ok_rt2', hasR && 'ok_ic', hasT && 'ok_tc', hasT && 'ok_tg', hasM && 'ok_m3', hasF && 'ok_fb'].filter(Boolean);
+    const KEYS = [hasR && 'ok_r2', hasR && 'ok_rt3', hasR && 'ok_ic', hasT && 'ok_tc', hasT && 'ok_tg', hasM && 'ok_m3', hasF && 'ok_fb'].filter(Boolean);
     const todo = window.filter((d) => KEYS.some((k) => need(d, k)));
     console.log(`Histórico anterior: ${prev ? Object.keys(prevByDate).length + ' dias' : 'nenhum'}. Atualizando ${todo.length} dia(s).`);
 
@@ -424,8 +430,8 @@ async function main() {
       if (!stopped && mcp && need(date, 'ok_r2')) {
         try { Object.assign(d, await ratoeiraDay(mcp, date)); d.ok_r2 = d.ok_r = true; } catch (e) { d.ok_r2 = false; if (rErr++ < 5) logErr(`ratoeira ${date}`, e.message); }
       }
-      if (!stopped && mcp && need(date, 'ok_rt2')) {
-        try { Object.assign(d, await ratoeiraTaboolaDay(mcp, date)); d.ok_rt = d.ok_rt2 = true; } catch (e) { d.ok_rt2 = false; if (rErr++ < 5) logErr(`ratoeira-taboola ${date}`, e.message); }
+      if (!stopped && mcp && need(date, 'ok_rt3')) {
+        try { Object.assign(d, await ratoeiraTaboolaDay(mcp, date)); d.ok_rt = d.ok_rt3 = true; } catch (e) { d.ok_rt3 = false; if (rErr++ < 5) logErr(`ratoeira-taboola ${date}`, e.message); }
       }
       if (!stopped && mcp && need(date, 'ok_ic')) {
         try { Object.assign(d, await ratoeiraCheckouts(mcp, date)); d.ok_ic = true; } catch (e) { d.ok_ic = false; if (rErr++ < 5) logErr(`ratoeira-checkouts ${date}`, e.message); }
